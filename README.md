@@ -1,7 +1,6 @@
 # 📚 Livro API
 
-Uma API RESTful desenvolvida com Laravel para cadastro, listagem e gerenciamento de livros. Ideal para estudantes praticarem conceitos de back-end com PHP e Laravel.
-
+Uma API RESTful desenvolvida com Laravel para cadastro, listagem e gerenciamento de livros.
 ## 🚀 Funcionalidades
 
 - ✅ Criar livros
@@ -9,16 +8,12 @@ Uma API RESTful desenvolvida com Laravel para cadastro, listagem e gerenciamento
 - ✅ Buscar por título ou autor
 - ✅ Filtrar por categoria ou status (lido/não lido)
 - ✅ Editar e excluir livros
-- ✅ API 100% RESTful
 
 ## 🧪 Tecnologias Utilizadas
 
-- PHP 8+
-- Laravel 10+
+- PHP 8
+- Laravel 10
 - MySQL
-- Laravel Eloquent ORM
-- Migrations e Seeders
-- API Resource Routing
 - Validação de dados
 
 ## 🛠️ Instalação e Uso
@@ -51,19 +46,14 @@ DB_USERNAME=seu_usuario
 DB_PASSWORD=sua_senha
 ```
 
-5. Rode as migrations:
+5. Inicie o servidor local:
 
 ```bash
-php artisan migrate
-```
-
-6. Inicie o servidor local:
-
-```bash
-php artisan serve
-```
-
 Acesse em: `http://localhost:8000`
+
+```
+
+
 
 ---
 
@@ -91,5 +81,5 @@ Acesse em: `http://localhost:8000`
 ## 👨‍🎓 Feito por
 
 Pedro Vinícius  
-📫 [LinkedIn](https://www.linkedin.com/in/pedro-vinícius-4292a41b7)  
-💻 [GitHub](https://github.com/PeeHR)
+ [LinkedIn](https://www.linkedin.com/in/pedro-vinícius-4292a41b7)  
+
