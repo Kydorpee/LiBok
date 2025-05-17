@@ -1,4 +1,4 @@
-# 📚 Livro API
+# 📚 LiBok API
 
 Uma API RESTful desenvolvida com Laravel para cadastro, listagem e gerenciamento de livros.
 ## 🚀 Funcionalidades
