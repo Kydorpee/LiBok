@@ -12,7 +12,7 @@ Uma API RESTful desenvolvida com Laravel para cadastro, listagem e gerenciamento
 ## 🧪 Tecnologias Utilizadas
 
 - PHP 8
-- Laravel 10
+- Laravel 11
 - MySQL
 - Validação de dados
 
@@ -21,8 +21,8 @@ Uma API RESTful desenvolvida com Laravel para cadastro, listagem e gerenciamento
 1. Clone o repositório:
 
 ```bash
-git clone https://github.com/seu-usuario/livro-api.git
-cd livro-api
+git clone https://github.com/seu-usuario/LiBok-api.git
+cd LiBok-api
 ```
 
 2. Instale as dependências:
