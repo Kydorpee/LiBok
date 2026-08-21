@@ -1,5 +1,8 @@
 import customtkinter as ctk
 import database
+import tkinter as tk
+from math import cos, radians, sin
+from pathlib import Path
 
 
 COLORS = ['#7E7F9A', '#EB9486', '#CAE7B9', '#D98E04', '#5B8E7D', '#C08497']
@@ -9,7 +12,7 @@ def show_page(parent):
     database.initialize_database()
     page = ctk.CTkFrame(parent, fg_color='#F3D38A', corner_radius=20)
     page.pack(fill='both', expand=True)
-    page.grid_columnconfigure(0, weight=1)
+    page.grid_columnconfigure((0, 1), weight=1)
     page.grid_rowconfigure(2, weight=1)
 
     ctk.CTkLabel(
@@ -17,7 +20,7 @@ def show_page(parent):
         text='Resumo dos livros',
         text_color='#2D3047',
         font=('Inter', 26, 'bold')
-    ).grid(row=0, column=0, pady=(28, 2))
+    ).grid(row=0, column=0, columnspan=2, pady=(28, 2))
 
     categories = database.get_category_totals()
     total_books = sum(total for _, total in categories)
@@ -27,7 +30,29 @@ def show_page(parent):
         text_color='#2D3047',
         font=('Inter', 15)
     )
-    total_label.grid(row=1, column=0, pady=(0, 8))
+    total_label.grid(row=1, column=0, columnspan=2, pady=(0, 8))
+
+    profile = ctk.CTkFrame(page, fg_color='#E7DAD8', corner_radius=18)
+    profile.grid(row=2, column=1, padx=(8, 32), pady=8, sticky='nsew')
+    profile.grid_columnconfigure(0, weight=1)
+
+    image_path = Path(__file__).parent.parent / 'img' / 'icon.png'
+    profile_image = tk.PhotoImage(file=image_path)
+    profile_label = ctk.CTkLabel(profile, text='', image=profile_image)
+    profile_label.image = profile_image
+    profile_label.grid(row=0, column=0, pady=(28, 12))
+    ctk.CTkLabel(
+        profile,
+        text='LiBok',
+        text_color='#2D3047',
+        font=('Inter', 24, 'bold')
+    ).grid(row=1, column=0, pady=(0, 6))
+    ctk.CTkLabel(
+        profile,
+        text='Gerenciador de livros',
+        text_color='#2D3047',
+        font=('Inter', 14)
+    ).grid(row=2, column=0, pady=(0, 28))
 
     chart = ctk.CTkCanvas(
         page,
@@ -36,7 +61,7 @@ def show_page(parent):
         background='#F3D38A',
         highlightthickness=0
     )
-    chart.grid(row=2, column=0, sticky='nsew', padx=24, pady=8)
+    chart.grid(row=2, column=0, sticky='nsew', padx=(32, 8), pady=8)
 
     tooltip = ctk.CTkLabel(
         page,
@@ -44,10 +69,10 @@ def show_page(parent):
         text_color='#2D3047',
         font=('Inter', 13)
     )
-    tooltip.grid(row=3, column=0, pady=(0, 4))
+    tooltip.grid(row=3, column=0, columnspan=2, pady=(0, 4))
 
     legend = ctk.CTkFrame(page, fg_color='transparent')
-    legend.grid(row=4, column=0, pady=(4, 24))
+    legend.grid(row=4, column=0, columnspan=2, pady=(4, 24))
 
     def redraw(event=None):
         draw_pie_chart(chart, categories, total_books, tooltip)
@@ -65,7 +90,7 @@ def show_page(parent):
         ).pack(side='left', padx=(0, 5))
         ctk.CTkLabel(
             item,
-            text=f'{category}: {amount}',
+            text=f'{category}: {amount} ({amount / total_books * 100:.1f}%)',
             text_color='#2D3047'
         ).pack(side='left')
 
@@ -95,6 +120,10 @@ def draw_pie_chart(chart, categories, total_books, tooltip):
     bottom = top + size
     start_angle = 0
 
+    center_x = (left + right) / 2
+    center_y = (top + bottom) / 2
+    label_radius = size * 0.38
+
     for index, (category, amount) in enumerate(categories):
         extent = amount / total_books * 360
         color = COLORS[index % len(COLORS)]
@@ -122,6 +151,15 @@ def draw_pie_chart(chart, categories, total_books, tooltip):
             tag,
             '<Leave>',
             lambda event: tooltip.configure(text='Passe o mouse sobre uma categoria')
+        )
+        label_angle = radians(start_angle + extent / 2)
+        chart.create_text(
+            center_x + label_radius * cos(label_angle),
+            center_y - label_radius * sin(label_angle),
+            text=f'{amount / total_books * 100:.1f}%',
+            fill='#FFFFFF',
+            font=('Inter', 11, 'bold'),
+            tags=tag
         )
         start_angle += extent
 
