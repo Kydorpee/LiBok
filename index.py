@@ -13,13 +13,13 @@ app.title('LiBok')
 app.geometry('1000x900')
 app.minsize(600, 300)
 
-app.configure(fg_color='white')
+app.configure(fg_color='#7E7F9A')
 
 app.grid_columnconfigure(0, weight=1)
 app.grid_rowconfigure(0, weight=0)
 app.grid_rowconfigure(1, weight=1)
 
-content = ctk.CTkFrame(app, fg_color='#F3D38A', corner_radius=0)
+content = ctk.CTkFrame(app, fg_color='#F3D38A', corner_radius=20)
 content.grid(row=1, column=0, padx=24, pady=24, sticky='nsew')
 
 pages = {
