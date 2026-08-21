@@ -1,65 +1,142 @@
 import customtkinter as ctk
+import database
+
+
+COLORS = ['#7E7F9A', '#EB9486', '#CAE7B9', '#D98E04', '#5B8E7D', '#C08497']
+
 
 def show_page(parent):
-	page = ctk.CTkFrame(parent, fg_color='#F3D38A', corner_radius=20)
-	page.pack(fill='both', expand=True)
-	page.grid_columnconfigure(0, weight=1)
-	page.grid_rowconfigure(2, weight=1)
+    database.initialize_database()
+    page = ctk.CTkFrame(parent, fg_color='#F3D38A', corner_radius=20)
+    page.pack(fill='both', expand=True)
+    page.grid_columnconfigure(0, weight=1)
+    page.grid_rowconfigure(2, weight=1)
 
-	ctk.CTkLabel(
-		page,
-		text='Livros cadastrados',
-		text_color='#2D3047',
-		font=('Inter', 26, 'bold')
-	).grid(row=0, column=0, pady=(32, 4))
+    ctk.CTkLabel(
+        page,
+        text='Resumo dos livros',
+        text_color='#2D3047',
+        font=('Inter', 26, 'bold')
+    ).grid(row=0, column=0, pady=(28, 2))
 
-	chart = ctk.CTkCanvas(
-		page,
-		width=360,
-		height=360,
-		background='#F3D38A',
-		highlightthickness=0
-	)
-	chart.grid(row=2, column=0, sticky='nsew', padx=24, pady=8)
-	chart.bind('<Configure>', lambda event: draw_pie_chart(chart))
+    categories = database.get_category_totals()
+    total_books = sum(total for _, total in categories)
+    total_label = ctk.CTkLabel(
+        page,
+        text=f'Total de livros cadastrados: {total_books}',
+        text_color='#2D3047',
+        font=('Inter', 15)
+    )
+    total_label.grid(row=1, column=0, pady=(0, 8))
 
-	legend = ctk.CTkFrame(page, fg_color='transparent')
-	legend.grid(row=3, column=0, pady=(4, 28))
+    chart = ctk.CTkCanvas(
+        page,
+        width=420,
+        height=380,
+        background='#F3D38A',
+        highlightthickness=0
+    )
+    chart.grid(row=2, column=0, sticky='nsew', padx=24, pady=8)
 
-	for column, (file_type, color, amount) in enumerate([
-		('Juvenil', '#7E7F9A', '42%'),
-		('Infantil', '#EB9486', '28%'),
-		('Diversos', '#CAE7B9', '18%'),
-		('Educativo', '#D98E04', '12%')
-	]):
-		item = ctk.CTkFrame(legend, fg_color='transparent')
-		item.grid(row=0, column=column, padx=10)
-		ctk.CTkLabel(item, text='  ', fg_color=color, corner_radius=4, width=18).pack(side='left', padx=(0, 5))
-		ctk.CTkLabel(item, text=f'{file_type} {amount}', text_color='#2D3047').pack(side='left')
+    tooltip = ctk.CTkLabel(
+        page,
+        text='Passe o mouse sobre uma categoria',
+        text_color='#2D3047',
+        font=('Inter', 13)
+    )
+    tooltip.grid(row=3, column=0, pady=(0, 4))
+
+    legend = ctk.CTkFrame(page, fg_color='transparent')
+    legend.grid(row=4, column=0, pady=(4, 24))
+
+    def redraw(event=None):
+        draw_pie_chart(chart, categories, total_books, tooltip)
+
+    for column, (category, amount) in enumerate(categories):
+        color = COLORS[column % len(COLORS)]
+        item = ctk.CTkFrame(legend, fg_color='transparent')
+        item.grid(row=0, column=column, padx=8)
+        ctk.CTkLabel(
+            item,
+            text='  ',
+            fg_color=color,
+            corner_radius=4,
+            width=18
+        ).pack(side='left', padx=(0, 5))
+        ctk.CTkLabel(
+            item,
+            text=f'{category}: {amount}',
+            text_color='#2D3047'
+        ).pack(side='left')
+
+    if not categories:
+        tooltip.configure(text='Cadastre livros para visualizar as categorias.')
+
+    chart.bind('<Configure>', redraw)
+    page.after_idle(redraw)
 
 
-def draw_pie_chart(chart):
-	chart.delete('all')
-	size = min(chart.winfo_width(), chart.winfo_height()) - 40
-	left = (chart.winfo_width() - size) / 2
-	top = (chart.winfo_height() - size) / 2
-	right = left + size
-	bottom = top + size
+def draw_pie_chart(chart, categories, total_books, tooltip):
+    chart.delete('all')
+    if not categories or total_books <= 0:
+        chart.create_text(
+            chart.winfo_width() / 2,
+            chart.winfo_height() / 2,
+            text='Nenhum livro cadastrado',
+            fill='#2D3047',
+            font=('Inter', 16)
+        )
+        return
 
-	start_angle = 0
-	for value, color in [
-		(42, '#7E7F9A'),
-		(28, '#EB9486'),
-		(18, '#CAE7B9'),
-		(12, '#D98E04')
-	]:
-		extent = value * 3.6
-		chart.create_arc(
-			left, top, right, bottom,
-			start=start_angle,
-			extent=extent,
-			fill=color,
-			outline='#F3D38A',
-			width=3
-		)
-		start_angle += extent
+    size = max(40, min(chart.winfo_width(), chart.winfo_height()) - 40)
+    left = (chart.winfo_width() - size) / 2
+    top = (chart.winfo_height() - size) / 2
+    right = left + size
+    bottom = top + size
+    start_angle = 0
+
+    for index, (category, amount) in enumerate(categories):
+        extent = amount / total_books * 360
+        color = COLORS[index % len(COLORS)]
+        tag = f'category_{index}'
+        chart.create_arc(
+            left,
+            top,
+            right,
+            bottom,
+            start=start_angle,
+            extent=extent,
+            fill=color,
+            outline='#F3D38A',
+            width=3,
+            tags=tag
+        )
+        chart.tag_bind(
+            tag,
+            '<Enter>',
+            lambda event, name=category, value=amount: tooltip.configure(
+                text=f'{name}: {value} livro(s)'
+            )
+        )
+        chart.tag_bind(
+            tag,
+            '<Leave>',
+            lambda event: tooltip.configure(text='Passe o mouse sobre uma categoria')
+        )
+        start_angle += extent
+
+    chart.create_oval(
+        left + size * 0.28,
+        top + size * 0.28,
+        right - size * 0.28,
+        bottom - size * 0.28,
+        fill='#F3D38A',
+        outline='#F3D38A'
+    )
+    chart.create_text(
+        chart.winfo_width() / 2,
+        chart.winfo_height() / 2,
+        text=f'{total_books}\nlivros',
+        fill='#2D3047',
+        font=('Inter', 18, 'bold')
+    )

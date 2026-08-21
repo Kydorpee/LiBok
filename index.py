@@ -13,7 +13,7 @@ app.title('LiBok')
 app.geometry('1000x900')
 app.minsize(600, 300)
 
-app.configure(fg_color='#7E7F9A')
+app.configure(fg_color="#9898AA")
 
 app.grid_columnconfigure(0, weight=1)
 app.grid_rowconfigure(0, weight=0)
@@ -44,11 +44,15 @@ nav_bar.grid(row=0, column=0, padx=24, pady=(16, 0), sticky='new')
 for column in range(3):
 	nav_bar.grid_columnconfigure(column, weight=1)
 
-for column, page in enumerate(['Dashboard', 'Pesquisar', 'Cadastrar']):
+for column, (page_name, page_label) in enumerate([
+	('Dashboard', 'Dashboard'),
+	('Search', 'Pesquisar'),
+	('Register', 'Cadastrar')
+]):
 	button = ctk.CTkButton(
 		nav_bar,
-		text=page,
-		command=lambda selected_page=page: select_page(selected_page),
+		text=page_label,
+		command=lambda selected_page=page_name: select_page(selected_page),
 		corner_radius=12,
 		fg_color=color2,
 		hover_color=color3,
