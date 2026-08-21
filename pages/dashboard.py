@@ -8,17 +8,10 @@ def show_page(parent):
 
 	ctk.CTkLabel(
 		page,
-		text='Arquivos do banco de dados',
+		text='Livros cadastrados',
 		text_color='#2D3047',
 		font=('Inter', 26, 'bold')
 	).grid(row=0, column=0, pady=(32, 4))
-
-	ctk.CTkLabel(
-		page,
-		text='Livros cadastrados',
-		text_color='#2D3047',
-		font=('Inter', 14)
-	).grid(row=1, column=0, pady=(0, 12))
 
 	chart = ctk.CTkCanvas(
 		page,

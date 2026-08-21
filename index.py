@@ -44,7 +44,7 @@ nav_bar.grid(row=0, column=0, padx=24, pady=(16, 0), sticky='new')
 for column in range(3):
 	nav_bar.grid_columnconfigure(column, weight=1)
 
-for column, page in enumerate(['Dashboard', 'Search', 'Register']):
+for column, page in enumerate(['Dashboard', 'Pesquisar', 'Cadastrar']):
 	button = ctk.CTkButton(
 		nav_bar,
 		text=page,
