@@ -11,7 +11,8 @@ color4 = '#7E7F9A'
 
 app.title('LiBok')
 app.geometry('1000x900')
-app.minsize(600, 300)
+app.iconbitmap('img/icon.png')
+app.minsize(1000, 400)
 
 app.configure(fg_color="#9898AA")
 
