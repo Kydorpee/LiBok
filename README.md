@@ -126,6 +126,25 @@ pip install customtkinter pillow
 python index.py
 ```
 
+## Gerar aplicativo `.exe`
+
+No Windows, use o ambiente virtual do projeto e instale o PyInstaller:
+
+```powershell
+.\myenv\Scripts\Activate.ps1
+pip install pyinstaller
+```
+
+Depois, na raiz do projeto, gere o executável único:
+
+```powershell
+pyinstaller --noconfirm --clean --onefile --windowed --name LiBok --icon img\icon.ico --add-data "img;img" index.py
+```
+
+O arquivo será criado em `dist\LiBok.exe`. Para usar em outra máquina Windows, copie apenas esse arquivo e abra-o normalmente. O computador de destino não precisa ter Python, CustomTkinter ou Pillow instalados.
+
+Os dados cadastrados pelo executável ficam em `%APPDATA%\LiBok\libok.db`, permitindo que o programa tenha permissão para salvar o acervo e preserve os dados entre execuções.
+
 ## Banco de dados
 
 O LiBok utiliza o arquivo local `database/libok.db`. A tabela principal é `books`, com os seguintes dados:

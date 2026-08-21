@@ -1,12 +1,18 @@
+import os
 import sqlite3
+import sys
 from pathlib import Path
 from unicodedata import combining, normalize
 
 
-DATABASE_PATH = Path(__file__).with_name('libok.db')
+if getattr(sys, 'frozen', False):
+    DATABASE_PATH = Path(os.environ.get('APPDATA', Path.home())) / 'LiBok' / 'libok.db'
+else:
+    DATABASE_PATH = Path(__file__).with_name('libok.db')
 
 
 def get_connection():
+    DATABASE_PATH.parent.mkdir(parents=True, exist_ok=True)
     connection = sqlite3.connect(DATABASE_PATH)
     connection.row_factory = sqlite3.Row
     return connection
