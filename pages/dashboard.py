@@ -12,7 +12,8 @@ def show_page(parent):
     database.initialize_database()
     page = ctk.CTkFrame(parent, fg_color='#F3D38A', corner_radius=20)
     page.pack(fill='both', expand=True)
-    page.grid_columnconfigure((0, 1), weight=1)
+    page.grid_columnconfigure(0, weight=3)
+    page.grid_columnconfigure(1, weight=2)
     page.grid_rowconfigure(2, weight=1)
 
     ctk.CTkLabel(
@@ -26,42 +27,30 @@ def show_page(parent):
     total_books = sum(total for _, total in categories)
     total_label = ctk.CTkLabel(
         page,
-        text=f'Total de livros cadastrados: {total_books}',
+        text='Distribuicao por categoria',
         text_color='#2D3047',
         font=('Inter', 15)
     )
     total_label.grid(row=1, column=0, columnspan=2, pady=(0, 8))
 
-    profile = ctk.CTkFrame(page, fg_color='#E7DAD8', corner_radius=18)
-    profile.grid(row=2, column=1, padx=(8, 32), pady=8, sticky='nsew')
+    chart_panel = ctk.CTkFrame(page, fg_color='#F3D38A', corner_radius=18)
+    chart_panel.grid(row=2, column=0, padx=(32, 12), pady=8, sticky='nsew')
+    chart_panel.grid_columnconfigure(0, weight=1)
+    chart_panel.grid_rowconfigure(0, weight=1)
+
+    profile = ctk.CTkFrame(page, fg_color='#F3D38A', corner_radius=18)
+    profile.grid(row=2, column=1, padx=(12, 32), pady=8, sticky='nsew')
     profile.grid_columnconfigure(0, weight=1)
 
-    image_path = Path(__file__).parent.parent / 'img' / 'icon.png'
-    profile_image = tk.PhotoImage(file=image_path)
-    profile_label = ctk.CTkLabel(profile, text='', image=profile_image)
-    profile_label.image = profile_image
-    profile_label.grid(row=0, column=0, pady=(28, 12))
-    ctk.CTkLabel(
-        profile,
-        text='LiBok',
-        text_color='#2D3047',
-        font=('Inter', 24, 'bold')
-    ).grid(row=1, column=0, pady=(0, 6))
-    ctk.CTkLabel(
-        profile,
-        text='Gerenciador de livros',
-        text_color='#2D3047',
-        font=('Inter', 14)
-    ).grid(row=2, column=0, pady=(0, 28))
 
     chart = ctk.CTkCanvas(
-        page,
-        width=420,
-        height=380,
+        chart_panel,
+        width=320,
+        height=320,
         background='#F3D38A',
         highlightthickness=0
     )
-    chart.grid(row=2, column=0, sticky='nsew', padx=(32, 8), pady=8)
+    chart.grid(row=0, column=0, padx=12, pady=12)
 
     tooltip = ctk.CTkLabel(
         page,
@@ -168,13 +157,14 @@ def draw_pie_chart(chart, categories, total_books, tooltip):
         top + size * 0.28,
         right - size * 0.28,
         bottom - size * 0.28,
-        fill='#F3D38A',
-        outline='#F3D38A'
+        fill='#FFFDF5',
+        outline='#FFFDF5'
     )
     chart.create_text(
         chart.winfo_width() / 2,
         chart.winfo_height() / 2,
-        text=f'{total_books}\nlivros',
+        text=f'TOTAL\n{total_books}\nlivros',
         fill='#2D3047',
-        font=('Inter', 18, 'bold')
+        font=('Inter', 16, 'bold'),
+        justify='center'
     )

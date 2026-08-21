@@ -1,4 +1,6 @@
 import customtkinter as ctk
+import tkinter as tk
+from pathlib import Path
 from pages import dashboard, search, register
 
 app = ctk.CTk() 
@@ -11,10 +13,12 @@ color4 = '#7E7F9A'
 
 app.title('LiBok')
 app.geometry('1000x900')
-app.iconbitmap('img/icon.png')
+icon_image = tk.PhotoImage(file=Path(__file__).parent / 'img' / 'icon.png')
+app.iconphoto(True, icon_image)
+app._icon_image = icon_image
 app.minsize(1000, 400)
 
-app.configure(fg_color="#9898AA")
+app.configure(fg_color=color1)
 
 app.grid_columnconfigure(0, weight=1)
 app.grid_rowconfigure(0, weight=0)
