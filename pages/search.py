@@ -6,7 +6,7 @@ from pathlib import Path
 
 def show_page(parent):
     database.initialize_database()
-    page = ctk.CTkFrame(parent, fg_color='#F3D38A', corner_radius=20)
+    page = ctk.CTkFrame(parent, fg_color='#8284BD', corner_radius=20)
     page.pack(fill='both', expand=True)
     page.grid_columnconfigure(0, weight=1)
     page.grid_rowconfigure(2, weight=1)
@@ -22,11 +22,13 @@ def show_page(parent):
         page,
         placeholder_text='Filtrar por nome, autor, categoria, assunto ou codigo',
         height=42,
-        corner_radius=12
+        corner_radius=12,
+        fg_color='white',
+        text_color='#2D3047'
     )
     search_entry.grid(row=1, column=0, padx=40, pady=(0, 16), sticky='ew')
 
-    results = ctk.CTkScrollableFrame(page, fg_color='#E7DAD8', corner_radius=18)
+    results = ctk.CTkScrollableFrame(page, fg_color='#F1F1F4', corner_radius=18)
     results.grid(row=2, column=0, padx=40, pady=(0, 28), sticky='nsew')
     results.grid_columnconfigure(0, weight=1)
 
@@ -44,7 +46,7 @@ def show_page(parent):
             return
 
         for row, book in enumerate(books):
-            book_card = ctk.CTkFrame(results, fg_color='white', corner_radius=14)
+            book_card = ctk.CTkFrame(results, fg_color='white', corner_radius=16)
             book_card.grid(row=row, column=0, padx=8, pady=6, sticky='ew')
             book_card.grid_columnconfigure(0, weight=1)
 
@@ -103,7 +105,7 @@ def open_edit_window(book, refresh_results):
     window.geometry('720x780')
     window.minsize(640, 700)
     window.iconbitmap(str(Path(__file__).parent.parent / 'img' / 'icon.ico'))
-    window.configure(fg_color='#F3D38A')
+    window.configure(fg_color='#8284BD')
     window.grab_set()
 
     form = ctk.CTkFrame(window, fg_color='white', corner_radius=18)
@@ -127,7 +129,13 @@ def open_edit_window(book, refresh_results):
             font=('Inter', 13, 'bold'),
             anchor='w'
         ).grid(row=row * 2, column=0, padx=20, pady=(14 if row == 0 else 4, 4), sticky='w')
-        entry = ctk.CTkEntry(form, height=38, corner_radius=10)
+        entry = ctk.CTkEntry(
+            form,
+            height=38,
+            corner_radius=10,
+            fg_color='white',
+            text_color='#2D3047'
+        )
         entry.insert(0, value)
         entry.grid(row=row * 2 + 1, column=0, padx=20, sticky='ew')
         entries[label_text] = entry
@@ -140,7 +148,13 @@ def open_edit_window(book, refresh_results):
         anchor='w'
     ).grid(row=10, column=0, padx=20, pady=(12, 4), sticky='w')
 
-    codes_box = ctk.CTkTextbox(form, height=90, corner_radius=10)
+    codes_box = ctk.CTkTextbox(
+        form,
+        height=90,
+        corner_radius=10,
+        fg_color='white',
+        text_color='#2D3047'
+    )
     codes_box.insert('1.0', book['registration_codes'])
     codes_box.grid(row=11, column=0, padx=20, sticky='ew')
 

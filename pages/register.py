@@ -4,7 +4,7 @@ import database.database as database
 
 def show_page(parent):
 	database.initialize_database()
-	page = ctk.CTkFrame(parent, fg_color='#F3D38A', corner_radius=20)
+	page = ctk.CTkFrame(parent, fg_color='#8284BD', corner_radius=20)
 	page.pack(fill='both', expand=True)
 	page.grid_columnconfigure(0, weight=1)
 	page.grid_rowconfigure(1, weight=1)
@@ -16,7 +16,7 @@ def show_page(parent):
 		font=('Inter', 26, 'bold')
 	).grid(row=0, column=0, pady=(32, 16))
 
-	form = ctk.CTkFrame(page, fg_color="#E7DAD8", corner_radius=18)
+	form = ctk.CTkFrame(page, fg_color='white', corner_radius=18)
 	form.grid(row=1, column=0, padx=40, pady=(0, 32), sticky='nsew')
 	form.grid_columnconfigure((0, 1), weight=1)
 
@@ -48,7 +48,9 @@ def show_page(parent):
 			field,
 			placeholder_text=placeholder,
 			height=42,
-			corner_radius=12
+			corner_radius=12,
+			fg_color='white',
+			text_color='#2D3047'
 		)
 		entry.grid(row=1, column=0, sticky='ew')
 		entries[label_text] = entry
@@ -136,7 +138,9 @@ def update_code_fields(quantity_entry, code_frame, code_entries, status):
 			code_frame,
 			placeholder_text=f'Codigo do exemplar {index + 1}',
 			height=42,
-			corner_radius=12
+			corner_radius=12,
+			fg_color='white',
+			text_color='#2D3047'
 		)
 		entry.grid(row=index + 1, column=0, padx=4, pady=4, sticky='ew')
 		code_entries.append(entry)

@@ -22,7 +22,7 @@ AUTO_CATEGORY_COLORS = {}
 
 def show_page(parent):
     database.initialize_database()
-    page = ctk.CTkFrame(parent, fg_color='#F3D38A', corner_radius=20)
+    page = ctk.CTkFrame(parent, fg_color='#8284BD', corner_radius=20)
     page.pack(fill='both', expand=True)
     page.grid_columnconfigure(0, weight=1)
     page.grid_rowconfigure(1, weight=1)
@@ -41,7 +41,7 @@ def show_page(parent):
         page,
         width=420,
         height=420,
-        background='#F3D38A',
+        background='#8284BD',
         highlightthickness=0
     )
     chart.grid(row=1, column=0, padx=24, pady=16)
@@ -146,7 +146,7 @@ def draw_pie_chart(chart, categories, total_books):
             start=start_angle,
             extent=extent,
             fill=color,
-            outline='#F3D38A',
+            outline='#8284BD',
             width=3,
             tags=tag
         )
