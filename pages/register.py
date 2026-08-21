@@ -69,11 +69,22 @@ def show_page(parent):
 		anchor='w'
 	).grid(row=0, column=0, sticky='w', pady=(0, 6))
 
+	code_scroll = ctk.CTkScrollableFrame(
+		code_frame,
+		height=170,
+		fg_color='#F1F1F4',
+		corner_radius=10,
+		scrollbar_button_color='#BDBDBD',
+		scrollbar_button_hover_color='#8F8F8F'
+	)
+	code_scroll.grid(row=1, column=0, sticky='ew')
+	code_scroll.grid_columnconfigure(0, weight=1)
+
 	code_entries = []
 	quantity_entry = entries['Quantidade']
 	quantity_entry.bind(
 		'<KeyRelease>',
-		lambda event: update_code_fields(quantity_entry, code_frame, code_entries, status)
+		lambda event: update_code_fields(quantity_entry, code_scroll, code_entries, status)
 	)
 
 	status = ctk.CTkLabel(form, text='', text_color='#000000', font=('Inter', 14))
@@ -130,7 +141,7 @@ def register_book(entries, code_entries, status):
 	status.configure(text='Livro cadastrado com sucesso.', text_color='#2D6A4F')
 
 
-def update_code_fields(quantity_entry, code_frame, code_entries, status):
+def update_code_fields(quantity_entry, code_scroll, code_entries, status):
 	for entry in code_entries:
 		entry.destroy()
 	code_entries.clear()
@@ -147,7 +158,7 @@ def update_code_fields(quantity_entry, code_frame, code_entries, status):
 
 	for index in range(quantity):
 		entry = ctk.CTkEntry(
-			code_frame,
+			code_scroll,
 			placeholder_text=f'Codigo do exemplar {index + 1}',
 			height=42,
 			corner_radius=12,

@@ -2,6 +2,10 @@
 
 Sistema desktop para organização e controle de uma pequena biblioteca.
 
+<p align="center">
+	<img src="img/icon.png" alt="Ícone do LiBok" width="180">
+</p>
+
 ## Sobre o projeto
 
 O LiBok nasceu de uma necessidade real. Minha esposa precisava organizar a biblioteca do trabalho, que é pequena, mas ainda não possuía um sistema de cadastro. Ela pensou em utilizar uma planilha do Excel e me contou a ideia.
@@ -44,6 +48,18 @@ O Excel poderia funcionar, mas pensei que seria possível ajudar a tornar esse c
 - Edição dos dados cadastrados.
 - Exclusão de livros com confirmação.
 
+## Imagens do aplicativo
+
+### Identidade visual
+
+<p align="center">
+	<img src="img/paleta.png" alt="Paleta de cores do LiBok" width="320">
+</p>
+
+### Telas
+
+As telas principais do LiBok são o Dashboard, a Pesquisa e o Cadastro. O Dashboard apresenta o gráfico de categorias, enquanto a tela de Pesquisa permite consultar, editar, excluir e exportar os livros cadastrados.
+
 ## Tecnologias utilizadas
 
 - **Python**: linguagem principal da aplicação.
@@ -62,7 +78,8 @@ LiBok/
 │   └── database.py       # Conexão, criação e operações do banco
 ├── img/
 │   ├── icon.ico          # Ícone da aplicação
-│   └── icon.png          # Imagem da tela inicial
+│   ├── icon.png          # Imagem da tela inicial
+│   └── paleta.png        # Paleta de cores da interface
 ├── pages/
 │   ├── dashboard.py      # Dashboard e gráfico de categorias
 │   ├── register.py       # Formulário de cadastro
