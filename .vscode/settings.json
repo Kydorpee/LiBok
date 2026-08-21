@@ -1,4 +1,8 @@
 {
     "python.defaultInterpreterPath": "${workspaceFolder}/myenv/Scripts/python.exe",
-    "python.terminal.activateEnvironment": true
+    "python.terminal.activateEnvironment": true,
+    "code-runner.runInTerminal": true,
+    "code-runner.executorMap": {
+        "python": "\"${workspaceFolder}/myenv/Scripts/python.exe\" -u"
+    }
 }
