@@ -4,7 +4,13 @@ import database.database as database
 
 def show_page(parent):
 	database.initialize_database()
-	page = ctk.CTkFrame(parent, fg_color='#8284BD', corner_radius=20)
+	page = ctk.CTkScrollableFrame(
+		parent,
+		fg_color='#8284BD',
+		corner_radius=20,
+		scrollbar_button_color='#BDBDBD',
+		scrollbar_button_hover_color='#8F8F8F'
+	)
 	page.pack(fill='both', expand=True)
 	page.grid_columnconfigure(0, weight=1)
 	page.grid_rowconfigure(1, weight=0)
