@@ -33,8 +33,8 @@ def show_page(parent):
     ctk.CTkLabel(
         page,
         text=f'Total de livros cadastrados: {total_books}',
-        text_color='#2D3047',
-        font=('Inter', 18, 'bold')
+        text_color='#000000',
+        font=('Inter', 20, 'bold')
     ).grid(row=0, column=0, pady=(20, 0))
 
     chart = ctk.CTkCanvas(
@@ -55,19 +55,19 @@ def show_page(parent):
     ctk.CTkLabel(
         page,
         text='Legenda',
-        text_color='#2D3047',
-        font=('Inter', 15, 'bold')
+        text_color='#000000',
+        font=('Inter', 17, 'bold')
     ).grid(row=2, column=0, pady=(0, 6))
 
     legend = ctk.CTkScrollableFrame(
         page,
-        height=54,
-        fg_color='#FFFDF5',
-        corner_radius=10,
-        scrollbar_button_color='#D8CFC0',
-        scrollbar_button_hover_color='#B8AA98'
+        height=46,
+        fg_color='#F7F7F7',
+        corner_radius=6,
+        scrollbar_button_color='#BDBDBD',
+        scrollbar_button_hover_color='#8F8F8F'
     )
-    legend.grid(row=3, column=0, padx=32, pady=(0, 12), sticky='ew')
+    legend.grid(row=3, column=0, padx=64, pady=(0, 6), sticky='ew')
     legend.grid_columnconfigure((0, 1, 2), weight=1)
 
     if categories and total_books > 0:
@@ -86,14 +86,15 @@ def show_page(parent):
             ctk.CTkLabel(
                 item,
                 text=f'{category}: {amount} ({amount / total_books * 100:.1f}%)',
-                text_color='#2D3047',
-                font=('Inter', 11)
+                text_color='#000000',
+                font=('Inter', 12)
             ).pack(side='left')
     else:
         ctk.CTkLabel(
             legend,
             text='Nenhuma categoria cadastrada.',
-            text_color='#2D3047'
+            text_color='#000000',
+            font=('Inter', 13)
         ).grid(row=0, column=0, columnspan=2, pady=10)
 
 
@@ -118,8 +119,8 @@ def draw_pie_chart(chart, categories, total_books):
             chart.winfo_width() / 2,
             chart.winfo_height() / 2,
             text='Sem dados',
-            fill='#2D3047',
-            font=('Inter', 20, 'bold')
+            fill='#000000',
+            font=('Inter', 22, 'bold')
         )
         return
 
@@ -161,19 +162,3 @@ def draw_pie_chart(chart, categories, total_books):
         )
         start_angle += extent
 
-    chart.create_oval(
-        left + size * 0.28,
-        top + size * 0.28,
-        right - size * 0.28,
-        bottom - size * 0.28,
-        fill='#FFFDF5',
-        outline='#FFFDF5'
-    )
-    chart.create_text(
-        chart.winfo_width() / 2,
-        chart.winfo_height() / 2,
-        text='100%',
-        fill='#2D3047',
-        font=('Inter', 26, 'bold'),
-        justify='center'
-    )

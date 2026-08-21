@@ -1,5 +1,6 @@
 import sqlite3
 from pathlib import Path
+from unicodedata import combining, normalize
 
 
 DATABASE_PATH = Path(__file__).with_name('libok.db')
@@ -30,6 +31,13 @@ def initialize_database():
 
 def create_book(name, author, category, subject, quantity, registration_codes):
     with get_connection() as connection:
+        normalized_name = normalize_search_text(name)
+        existing_names = connection.execute(
+            'SELECT name FROM books'
+        ).fetchall()
+        if any(normalized_name == normalize_search_text(row['name']) for row in existing_names):
+            return False
+
         connection.execute(
             '''
             INSERT INTO books
@@ -38,22 +46,40 @@ def create_book(name, author, category, subject, quantity, registration_codes):
             ''',
             (name, author, category, subject, quantity, '\n'.join(registration_codes))
         )
+    return True
 
 
 def list_books(search_text=''):
     with get_connection() as connection:
-        return connection.execute(
-            '''
-            SELECT * FROM books
-            WHERE name LIKE ?
-               OR author LIKE ?
-               OR category LIKE ?
-               OR subject LIKE ?
-               OR registration_codes LIKE ?
-            ORDER BY id DESC
-            ''',
-            tuple(f'%{search_text}%' for _ in range(5))
+        books = connection.execute(
+            'SELECT * FROM books ORDER BY id DESC'
         ).fetchall()
+
+    search_value = normalize_search_text(search_text)
+    if not search_value:
+        return books
+
+    return [
+        book for book in books
+        if any(
+            search_value in normalize_search_text(book[field])
+            for field in (
+                'name',
+                'author',
+                'category',
+                'subject',
+                'registration_codes'
+            )
+        )
+    ]
+
+
+def normalize_search_text(value):
+    normalized_value = normalize('NFKD', str(value).casefold().strip())
+    return ''.join(
+        character for character in normalized_value
+        if not combining(character)
+    )
 
 
 def get_category_totals():

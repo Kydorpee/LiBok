@@ -14,7 +14,7 @@ def show_page(parent):
     ctk.CTkLabel(
         page,
         text='Livros cadastrados',
-        text_color='#2D3047',
+        text_color='#000000',
         font=('Inter', 26, 'bold')
     ).grid(row=0, column=0, pady=(28, 12))
 
@@ -24,7 +24,9 @@ def show_page(parent):
         height=42,
         corner_radius=12,
         fg_color='white',
-        text_color='#2D3047'
+        text_color='#000000',
+        placeholder_text_color='#666666',
+        font=('Inter', 14)
     )
     search_entry.grid(row=1, column=0, padx=40, pady=(0, 16), sticky='ew')
 
@@ -39,9 +41,9 @@ def show_page(parent):
         if not books:
             ctk.CTkLabel(
                 results,
-                text='Nenhum livro encontrado.',
-                text_color='#2D3047',
-                font=('Inter', 15)
+                text='Nenhum livro encontrado para essa pesquisa.',
+                text_color='#000000',
+                font=('Inter', 16, 'bold')
             ).grid(row=0, column=0, pady=30)
             return
 
@@ -60,7 +62,8 @@ def show_page(parent):
             ctk.CTkLabel(
                 book_card,
                 text=book_text,
-                text_color='#2D3047',
+                text_color='#000000',
+                font=('Inter', 14),
                 justify='left',
                 anchor='w'
             ).grid(row=0, column=0, padx=16, pady=12, sticky='ew')
@@ -72,6 +75,7 @@ def show_page(parent):
                 corner_radius=10,
                 fg_color='#7E7F9A',
                 hover_color='#EB9486',
+                font=('Inter', 13, 'bold'),
                 command=lambda selected_book=book: open_edit_window(selected_book, refresh_results)
             ).grid(row=0, column=1, padx=16, pady=12)
             ctk.CTkButton(
@@ -82,6 +86,7 @@ def show_page(parent):
                 corner_radius=10,
                 fg_color='#B5443A',
                 hover_color='#8F3028',
+                font=('Inter', 13, 'bold'),
                 command=lambda selected_book=book: delete_selected_book(selected_book, refresh_results)
             ).grid(row=0, column=2, padx=(0, 16), pady=12)
             
