@@ -1,4 +1,5 @@
 import customtkinter as ctk
+from pages import dashboard, search, register
 
 app = ctk.CTk() 
 
@@ -10,17 +11,51 @@ color4 = '#7E7F9A'
 
 app.title('LiBok')
 app.geometry('1000x900')
+app.minsize(600, 300)
 
-app.config(background=color1)
+app.configure(fg_color=color1)
 
-label_dashboard = ctk.CTkLabel(app,width=10, height=2,text='Dashboard',font=('Inter',20),fg_color=color2)
-label_dashboard.grid(row=0,column=0)
+app.grid_columnconfigure(0, weight=1)
+app.grid_rowconfigure(0, weight=0)
+app.grid_rowconfigure(1, weight=1)
 
-label_search = ctk.CTkLabel(app,width=10, height=2,text='Pesquisar',font=('Inter',20),fg_color=color2)
-label_search.grid(row=0,column=1)
+content = ctk.CTkFrame(app, fg_color='black', corner_radius=0)
+content.grid(row=1, column=0, padx=24, pady=24, sticky='nsew')
 
-label_register = ctk.CTkLabel(app,width=10, height=2,text='Cadastrar',font=('Inter',20),fg_color=color2)
-label_register.grid(row=0,column=2)
+pages = {
+	'Dashboard': dashboard.show_page,
+	'Search': search.show_page,
+	'Register': register.show_page
+}
 
+def select_page(page_name):
+	for widget in content.winfo_children():
+		widget.destroy()
+	pages[page_name](content)
+
+
+nav_bar = ctk.CTkFrame(
+	app,
+	corner_radius=18,
+	fg_color='#CAE7B9'
+)
+nav_bar.grid(row=0, column=0, padx=24, pady=(16, 0), sticky='new')
+
+for column in range(3):
+	nav_bar.grid_columnconfigure(column, weight=1)
+
+for column, page in enumerate(['Dashboard', 'Search', 'Register']):
+	button = ctk.CTkButton(
+		nav_bar,
+		text=page,
+		command=lambda selected_page=page: select_page(selected_page),
+		corner_radius=12,
+		fg_color=color2,
+		hover_color=color3,
+		text_color='black'
+	)
+	button.grid(row=0, column=column, padx=8, pady=12, sticky='ew')
+
+select_page('Dashboard')
 
 app.mainloop()
