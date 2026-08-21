@@ -40,6 +40,7 @@ O Excel poderia funcionar, mas pensei que seria possível ajudar a tornar esse c
 - Pesquisa por nome, autor, categoria, assunto ou código de registro.
 - Busca sem diferenciação de maiúsculas, minúsculas e acentos.
 - Mensagem informando quando nenhum livro é encontrado.
+- Exportação de todo o acervo para CSV compatível com Excel.
 - Edição dos dados cadastrados.
 - Exclusão de livros com confirmação.
 
@@ -123,7 +124,6 @@ Não é necessário instalar ou iniciar um servidor de banco de dados.
 
 ## Possíveis evoluções
 
-- Exportação dos dados para Excel ou CSV.
 - Relatórios de livros por categoria.
 - Controle de empréstimos e devoluções.
 - Cadastro de usuários da biblioteca.

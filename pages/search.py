@@ -1,6 +1,7 @@
 import customtkinter as ctk
+import csv
 import database.database as database
-from tkinter import messagebox
+from tkinter import filedialog, messagebox
 from pathlib import Path
 
 
@@ -28,7 +29,22 @@ def show_page(parent):
         placeholder_text_color='#666666',
         font=('Inter', 14)
     )
-    search_entry.grid(row=1, column=0, padx=40, pady=(0, 16), sticky='ew')
+    search_bar = ctk.CTkFrame(page, fg_color='transparent')
+    search_bar.grid(row=1, column=0, padx=40, pady=(0, 16), sticky='ew')
+    search_bar.grid_columnconfigure(0, weight=1)
+
+    search_entry.grid(row=0, column=0, sticky='ew')
+    ctk.CTkButton(
+        search_bar,
+        text='Exportar CSV',
+        width=140,
+        height=42,
+        corner_radius=12,
+        fg_color='#68754F',
+        hover_color='#7D8B5F',
+        font=('Inter', 13, 'bold'),
+        command=export_books
+    ).grid(row=0, column=1, padx=(12, 0))
 
     results = ctk.CTkScrollableFrame(page, fg_color='#F1F1F4', corner_radius=18)
     results.grid(row=2, column=0, padx=40, pady=(0, 28), sticky='nsew')
@@ -102,6 +118,43 @@ def delete_selected_book(book, refresh_results):
     if confirmed:
         database.delete_book(book['id'])
         refresh_results()
+
+
+def export_books():
+    books = database.list_books()
+    if not books:
+        messagebox.showinfo('Exportar livros', 'Não há livros cadastrados para exportar.')
+        return
+
+    file_path = filedialog.asksaveasfilename(
+        title='Salvar acervo como CSV',
+        defaultextension='.csv',
+        filetypes=[('Arquivo CSV', '*.csv'), ('Todos os arquivos', '*.*')]
+    )
+    if not file_path:
+        return
+
+    with open(file_path, 'w', newline='', encoding='utf-8-sig') as csv_file:
+        writer = csv.writer(csv_file, delimiter=';')
+        writer.writerow([
+            'Nome do livro',
+            'Autor',
+            'Categoria',
+            'Assunto',
+            'Quantidade',
+            'Codigos de registro'
+        ])
+        for book in books:
+            writer.writerow([
+                book['name'],
+                book['author'],
+                book['category'],
+                book['subject'],
+                book['quantity'],
+                book['registration_codes'].replace('\n', ', ')
+            ])
+
+    messagebox.showinfo('Exportar livros', 'Acervo exportado com sucesso.')
 
 
 def open_edit_window(book, refresh_results):
