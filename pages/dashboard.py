@@ -1,8 +1,7 @@
 import customtkinter as ctk
 
-
 def show_page(parent):
-	page = ctk.CTkFrame(parent, fg_color='black', corner_radius=0)
+	page = ctk.CTkFrame(parent, fg_color='#F3D38A', corner_radius=0)
 	page.pack(fill='both', expand=True)
 	ctk.CTkLabel(
 		page,

@@ -13,13 +13,13 @@ app.title('LiBok')
 app.geometry('1000x900')
 app.minsize(600, 300)
 
-app.configure(fg_color=color1)
+app.configure(fg_color='white')
 
 app.grid_columnconfigure(0, weight=1)
 app.grid_rowconfigure(0, weight=0)
 app.grid_rowconfigure(1, weight=1)
 
-content = ctk.CTkFrame(app, fg_color='black', corner_radius=0)
+content = ctk.CTkFrame(app, fg_color='#F3D38A', corner_radius=0)
 content.grid(row=1, column=0, padx=24, pady=24, sticky='nsew')
 
 pages = {
@@ -37,7 +37,7 @@ def select_page(page_name):
 nav_bar = ctk.CTkFrame(
 	app,
 	corner_radius=18,
-	fg_color='#CAE7B9'
+	fg_color= color2
 )
 nav_bar.grid(row=0, column=0, padx=24, pady=(16, 0), sticky='new')
 
