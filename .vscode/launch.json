@@ -1,0 +1,13 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "LiBok",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/index.py",
+            "console": "integratedTerminal",
+            "justMyCode": true
+        }
+    ]
+}
