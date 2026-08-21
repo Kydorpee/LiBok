@@ -1,5 +1,7 @@
 import customtkinter as ctk
-import database
+import database.database as database
+from tkinter import messagebox
+from pathlib import Path
 
 
 def show_page(parent):
@@ -70,16 +72,37 @@ def show_page(parent):
                 hover_color='#EB9486',
                 command=lambda selected_book=book: open_edit_window(selected_book, refresh_results)
             ).grid(row=0, column=1, padx=16, pady=12)
-
+            ctk.CTkButton(
+                book_card,
+                text='Excluir',
+                width=90,
+                height=36,
+                corner_radius=10,
+                fg_color='#B5443A',
+                hover_color='#8F3028',
+                command=lambda selected_book=book: delete_selected_book(selected_book, refresh_results)
+            ).grid(row=0, column=2, padx=(0, 16), pady=12)
+            
     search_entry.bind('<KeyRelease>', refresh_results)
     refresh_results()
+
+
+def delete_selected_book(book, refresh_results):
+    confirmed = messagebox.askyesno(
+        'Excluir livro',
+        f"Deseja excluir o livro '{book['name']}'?"
+    )
+    if confirmed:
+        database.delete_book(book['id'])
+        refresh_results()
 
 
 def open_edit_window(book, refresh_results):
     window = ctk.CTkToplevel()
     window.title('Editar livro')
-    window.geometry('560x620')
-    window.minsize(480, 560)
+    window.geometry('720x780')
+    window.minsize(640, 700)
+    window.iconbitmap(str(Path(__file__).parent.parent / 'img' / 'icon.ico'))
     window.configure(fg_color='#F3D38A')
     window.grab_set()
 

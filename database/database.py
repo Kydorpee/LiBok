@@ -80,3 +80,8 @@ def update_book(book_id, name, author, category, subject, quantity, registration
             ''',
             (name, author, category, subject, quantity, '\n'.join(registration_codes), book_id)
         )
+
+
+def delete_book(book_id):
+    with get_connection() as connection:
+        connection.execute('DELETE FROM books WHERE id = ?', (book_id,))

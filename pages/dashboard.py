@@ -1,104 +1,125 @@
 import customtkinter as ctk
-import database
-import tkinter as tk
+import database.database as database
 from math import cos, radians, sin
-from pathlib import Path
+from unicodedata import combining, normalize
 
 
-COLORS = ['#7E7F9A', '#EB9486', '#CAE7B9', '#D98E04', '#5B8E7D', '#C08497']
+CATEGORY_COLORS = {
+    'tecnologia': '#4F6D7A',
+    'infantil': '#EB9486',
+    'juvenil': '#7E7F9A',
+    'educativo': '#CAE7B9',
+    'romance': '#D98E04',
+    'ficcao': '#5B8E7D',
+    'historia': '#C08497'
+}
+FALLBACK_COLORS = [
+    '#8C6E5D', '#4F6D7A', '#A44A3F', '#6B705C',
+    '#6D597A', '#277DA1', '#F9844A', '#43AA8B'
+]
+AUTO_CATEGORY_COLORS = {}
 
 
 def show_page(parent):
     database.initialize_database()
     page = ctk.CTkFrame(parent, fg_color='#F3D38A', corner_radius=20)
     page.pack(fill='both', expand=True)
-    page.grid_columnconfigure(0, weight=3)
-    page.grid_columnconfigure(1, weight=2)
-    page.grid_rowconfigure(2, weight=1)
-
-    ctk.CTkLabel(
-        page,
-        text='Resumo dos livros',
-        text_color='#2D3047',
-        font=('Inter', 26, 'bold')
-    ).grid(row=0, column=0, columnspan=2, pady=(28, 2))
+    page.grid_columnconfigure(0, weight=1)
+    page.grid_rowconfigure(1, weight=1)
 
     categories = database.get_category_totals()
     total_books = sum(total for _, total in categories)
-    total_label = ctk.CTkLabel(
+
+    ctk.CTkLabel(
         page,
-        text='Distribuicao por categoria',
+        text=f'Total de livros cadastrados: {total_books}',
         text_color='#2D3047',
-        font=('Inter', 15)
-    )
-    total_label.grid(row=1, column=0, columnspan=2, pady=(0, 8))
-
-    chart_panel = ctk.CTkFrame(page, fg_color='#F3D38A', corner_radius=18)
-    chart_panel.grid(row=2, column=0, padx=(32, 12), pady=8, sticky='nsew')
-    chart_panel.grid_columnconfigure(0, weight=1)
-    chart_panel.grid_rowconfigure(0, weight=1)
-
-    profile = ctk.CTkFrame(page, fg_color='#F3D38A', corner_radius=18)
-    profile.grid(row=2, column=1, padx=(12, 32), pady=8, sticky='nsew')
-    profile.grid_columnconfigure(0, weight=1)
-
+        font=('Inter', 18, 'bold')
+    ).grid(row=0, column=0, pady=(20, 0))
 
     chart = ctk.CTkCanvas(
-        chart_panel,
-        width=320,
-        height=320,
+        page,
+        width=420,
+        height=420,
         background='#F3D38A',
         highlightthickness=0
     )
-    chart.grid(row=0, column=0, padx=12, pady=12)
-
-    tooltip = ctk.CTkLabel(
-        page,
-        text='Passe o mouse sobre uma categoria',
-        text_color='#2D3047',
-        font=('Inter', 13)
-    )
-    tooltip.grid(row=3, column=0, columnspan=2, pady=(0, 4))
-
-    legend = ctk.CTkFrame(page, fg_color='transparent')
-    legend.grid(row=4, column=0, columnspan=2, pady=(4, 24))
+    chart.grid(row=1, column=0, padx=24, pady=16)
 
     def redraw(event=None):
-        draw_pie_chart(chart, categories, total_books, tooltip)
-
-    for column, (category, amount) in enumerate(categories):
-        color = COLORS[column % len(COLORS)]
-        item = ctk.CTkFrame(legend, fg_color='transparent')
-        item.grid(row=0, column=column, padx=8)
-        ctk.CTkLabel(
-            item,
-            text='  ',
-            fg_color=color,
-            corner_radius=4,
-            width=18
-        ).pack(side='left', padx=(0, 5))
-        ctk.CTkLabel(
-            item,
-            text=f'{category}: {amount} ({amount / total_books * 100:.1f}%)',
-            text_color='#2D3047'
-        ).pack(side='left')
-
-    if not categories:
-        tooltip.configure(text='Cadastre livros para visualizar as categorias.')
+        draw_pie_chart(chart, categories, total_books)
 
     chart.bind('<Configure>', redraw)
     page.after_idle(redraw)
 
+    ctk.CTkLabel(
+        page,
+        text='Legenda',
+        text_color='#2D3047',
+        font=('Inter', 15, 'bold')
+    ).grid(row=2, column=0, pady=(0, 6))
 
-def draw_pie_chart(chart, categories, total_books, tooltip):
+    legend = ctk.CTkScrollableFrame(
+        page,
+        height=54,
+        fg_color='#FFFDF5',
+        corner_radius=10,
+        scrollbar_button_color='#D8CFC0',
+        scrollbar_button_hover_color='#B8AA98'
+    )
+    legend.grid(row=3, column=0, padx=32, pady=(0, 12), sticky='ew')
+    legend.grid_columnconfigure((0, 1, 2), weight=1)
+
+    if categories and total_books > 0:
+        for index, (category, amount) in enumerate(categories):
+            color = category_color(category, index)
+            item = ctk.CTkFrame(legend, fg_color='transparent')
+            item.grid(row=index // 3, column=index % 3, padx=6, pady=3, sticky='w')
+            ctk.CTkLabel(
+                item,
+                text='',
+                width=12,
+                height=12,
+                fg_color=color,
+                corner_radius=3
+            ).pack(side='left', padx=(0, 4))
+            ctk.CTkLabel(
+                item,
+                text=f'{category}: {amount} ({amount / total_books * 100:.1f}%)',
+                text_color='#2D3047',
+                font=('Inter', 11)
+            ).pack(side='left')
+    else:
+        ctk.CTkLabel(
+            legend,
+            text='Nenhuma categoria cadastrada.',
+            text_color='#2D3047'
+        ).grid(row=0, column=0, columnspan=2, pady=10)
+
+
+def category_color(category, index=0):
+    normalized_category = normalize('NFKD', category.strip().casefold())
+    normalized_category = ''.join(
+        character for character in normalized_category
+        if not combining(character)
+    )
+    if normalized_category in CATEGORY_COLORS:
+        return CATEGORY_COLORS[normalized_category]
+    if normalized_category not in AUTO_CATEGORY_COLORS:
+        color_index = len(AUTO_CATEGORY_COLORS) % len(FALLBACK_COLORS)
+        AUTO_CATEGORY_COLORS[normalized_category] = FALLBACK_COLORS[color_index]
+    return AUTO_CATEGORY_COLORS[normalized_category]
+
+
+def draw_pie_chart(chart, categories, total_books):
     chart.delete('all')
     if not categories or total_books <= 0:
         chart.create_text(
             chart.winfo_width() / 2,
             chart.winfo_height() / 2,
-            text='Nenhum livro cadastrado',
+            text='Sem dados',
             fill='#2D3047',
-            font=('Inter', 16)
+            font=('Inter', 20, 'bold')
         )
         return
 
@@ -115,7 +136,7 @@ def draw_pie_chart(chart, categories, total_books, tooltip):
 
     for index, (category, amount) in enumerate(categories):
         extent = amount / total_books * 360
-        color = COLORS[index % len(COLORS)]
+        color = category_color(category, index)
         tag = f'category_{index}'
         chart.create_arc(
             left,
@@ -128,18 +149,6 @@ def draw_pie_chart(chart, categories, total_books, tooltip):
             outline='#F3D38A',
             width=3,
             tags=tag
-        )
-        chart.tag_bind(
-            tag,
-            '<Enter>',
-            lambda event, name=category, value=amount: tooltip.configure(
-                text=f'{name}: {value} livro(s)'
-            )
-        )
-        chart.tag_bind(
-            tag,
-            '<Leave>',
-            lambda event: tooltip.configure(text='Passe o mouse sobre uma categoria')
         )
         label_angle = radians(start_angle + extent / 2)
         chart.create_text(
@@ -163,8 +172,8 @@ def draw_pie_chart(chart, categories, total_books, tooltip):
     chart.create_text(
         chart.winfo_width() / 2,
         chart.winfo_height() / 2,
-        text=f'TOTAL\n{total_books}\nlivros',
+        text='100%',
         fill='#2D3047',
-        font=('Inter', 16, 'bold'),
+        font=('Inter', 26, 'bold'),
         justify='center'
     )

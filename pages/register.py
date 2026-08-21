@@ -1,5 +1,5 @@
 import customtkinter as ctk
-import database
+import database.database as database
 
 
 def show_page(parent):
