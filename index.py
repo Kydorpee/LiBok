@@ -77,8 +77,6 @@ nav_bar.grid(row=0, column=0, padx=24, pady=(16, 0), sticky='new')
 for column in range(3):
 	nav_bar.grid_columnconfigure(column, weight=1)
 
-tooltip_window = None
-tooltip_after_id = None
 nav_buttons = []
 
 
@@ -98,43 +96,11 @@ def update_nav_layout(event=None):
 
 nav_bar.bind('<Configure>', update_nav_layout)
 
-def show_tooltip(widget, text):
-	global tooltip_window, tooltip_after_id
-	hide_tooltip()
-	tooltip_after_id = app.after(400, lambda: create_tooltip(widget, text))
 
-
-def create_tooltip(widget, text):
-	global tooltip_window
-	tooltip_window = ctk.CTkToplevel(app)
-	tooltip_window.overrideredirect(True)
-	tooltip_window.attributes('-topmost', True)
-	tooltip_window.configure(fg_color='#FFF8E7')
-	tooltip_window.geometry(f'+{widget.winfo_rootx()}+{widget.winfo_rooty() + widget.winfo_height() + 8}')
-	ctk.CTkLabel(
-		tooltip_window,
-		text=text,
-		text_color='#2D3047',
-		font=('Segoe UI', 14),
-		fg_color='#FFF8E7',
-		corner_radius=8
-	).pack(padx=12, pady=8)
-
-
-def hide_tooltip():
-	global tooltip_window, tooltip_after_id
-	if tooltip_after_id is not None:
-		app.after_cancel(tooltip_after_id)
-		tooltip_after_id = None
-	if tooltip_window is not None:
-		tooltip_window.destroy()
-		tooltip_window = None
-
-
-for column, (page_name, page_label, tooltip_text) in enumerate([
-	('Dashboard', 'Dashboard', 'Visualize o resumo dos livros cadastrados.'),
-	('Search', 'Pesquisar', 'Consulte, edite ou exclua livros cadastrados.'),
-	('Register', 'Cadastrar', 'Adicione um novo livro ao acervo.')
+for column, (page_name, page_label) in enumerate([
+	('Dashboard', 'Dashboard'),
+	('Search', 'Pesquisar'),
+	('Register', 'Cadastrar')
 ]):
 	button = ctk.CTkButton(
 		nav_bar,
@@ -150,8 +116,6 @@ for column, (page_name, page_label, tooltip_text) in enumerate([
 	)
 	button.grid(row=0, column=column, padx=8, pady=8, sticky='ew')
 	nav_buttons.append(button)
-	button.bind('<Enter>', lambda event, text=tooltip_text: show_tooltip(event.widget, text))
-	button.bind('<Leave>', lambda event: hide_tooltip())
 
 show_start_screen()
 
