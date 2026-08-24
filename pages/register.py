@@ -34,11 +34,14 @@ def show_page(parent):
 		('Quantidade', 'Digite a quantidade')
 	]
 	entries = {}
+	field_frames = []
 
 	for index, (label_text, placeholder) in enumerate(fields):
+		field = ctk.CTkFrame(form, fg_color='transparent')
+		field_frames.append(field)
+
 		row = index // 2
 		column = index % 2
-		field = ctk.CTkFrame(form, fg_color='transparent')
 		field.grid(row=row, column=column, padx=20, pady=(24 if row == 0 else 8, 8), sticky='ew')
 		field.grid_columnconfigure(0, weight=1)
 
@@ -96,7 +99,7 @@ def show_page(parent):
 	status = ctk.CTkLabel(form, text='', text_color='#000000', font=('Inter', 14))
 	status.grid(row=4, column=0, columnspan=2, pady=(4, 8))
 
-	ctk.CTkButton(
+	submit_button = ctk.CTkButton(
 		form,
 		text='Cadastrar',
 		height=44,
@@ -105,7 +108,26 @@ def show_page(parent):
 		hover_color='#EB9486',
 		font=('Inter', 15, 'bold'),
 		command=lambda: register_book(entries, code_entries, status)
-	).grid(row=5, column=0, columnspan=2, padx=20, pady=(4, 24), sticky='ew')
+	)
+	submit_button.grid(row=5, column=0, columnspan=2, padx=20, pady=(4, 24), sticky='ew')
+
+	def update_form_layout(event=None):
+		compact = form.winfo_width() < 700
+
+		for index, field in enumerate(field_frames):
+			if compact:
+				row, column, columnspan = index, 0, 2
+			else:
+				row, column, columnspan = index // 2, index % 2, 1
+			field.grid_configure(row=row, column=column, columnspan=columnspan)
+
+		section_row = len(fields) if compact else (len(fields) + 1) // 2
+		code_frame.grid_configure(row=section_row)
+		status.grid_configure(row=section_row + 1)
+		submit_button.grid_configure(row=section_row + 2)
+
+	form.bind('<Configure>', update_form_layout)
+	form.after_idle(update_form_layout)
 
 
 def register_book(entries, code_entries, status):

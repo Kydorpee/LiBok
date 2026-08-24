@@ -36,6 +36,17 @@ def show_page(parent):
     search_entry.grid(row=0, column=0, sticky='ew')
     ctk.CTkButton(
         search_bar,
+        text='Importar CSV',
+        width=140,
+        height=42,
+        corner_radius=12,
+        fg_color="#EB472E",
+        hover_color='#EB9486',
+        font=('Inter', 13, 'bold'),
+        command=import_books
+    ).grid(row=0, column=1, padx=(12, 0))
+    ctk.CTkButton(
+        search_bar,
         text='Exportar CSV',
         width=140,
         height=42,
@@ -44,7 +55,7 @@ def show_page(parent):
         hover_color='#7D8B5F',
         font=('Inter', 13, 'bold'),
         command=export_books
-    ).grid(row=0, column=1, padx=(12, 0))
+    ).grid(row=0, column=2, padx=(12, 0))
 
     results = ctk.CTkScrollableFrame(page, fg_color='#F1F1F4', corner_radius=18)
     results.grid(row=2, column=0, padx=40, pady=(0, 28), sticky='nsew')
@@ -66,7 +77,7 @@ def show_page(parent):
         for row, book in enumerate(books):
             book_card = ctk.CTkFrame(results, fg_color='white', corner_radius=16)
             book_card.grid(row=row, column=0, padx=8, pady=6, sticky='ew')
-            book_card.grid_columnconfigure(0, weight=1)
+            book_card.grid_columnconfigure((0, 1), weight=1)
 
             codes = book['registration_codes'].replace('\n', ', ')
             book_text = (
@@ -75,14 +86,19 @@ def show_page(parent):
                 f"Assunto: {book['subject']} | Quantidade: {book['quantity']}\n"
                 f"Codigos: {codes}"
             )
-            ctk.CTkLabel(
+            book_label = ctk.CTkLabel(
                 book_card,
                 text=book_text,
                 text_color='#000000',
                 font=('Inter', 14),
                 justify='left',
                 anchor='w'
-            ).grid(row=0, column=0, padx=16, pady=12, sticky='ew')
+            )
+            book_label.grid(row=0, column=0, columnspan=2, padx=16, pady=(12, 6), sticky='ew')
+            book_card.bind(
+                '<Configure>',
+                lambda event, label=book_label: label.configure(wraplength=max(180, event.width - 32))
+            )
             ctk.CTkButton(
                 book_card,
                 text='Editar',
@@ -93,7 +109,7 @@ def show_page(parent):
                 hover_color='#EB9486',
                 font=('Inter', 13, 'bold'),
                 command=lambda selected_book=book: open_edit_window(selected_book, refresh_results)
-            ).grid(row=0, column=1, padx=16, pady=12)
+            ).grid(row=1, column=0, padx=(16, 6), pady=(0, 12), sticky='ew')
             ctk.CTkButton(
                 book_card,
                 text='Excluir',
@@ -104,7 +120,7 @@ def show_page(parent):
                 hover_color='#8F3028',
                 font=('Inter', 13, 'bold'),
                 command=lambda selected_book=book: delete_selected_book(selected_book, refresh_results)
-            ).grid(row=0, column=2, padx=(0, 16), pady=12)
+            ).grid(row=1, column=1, padx=(6, 16), pady=(0, 12), sticky='ew')
             
     search_entry.bind('<KeyRelease>', refresh_results)
     refresh_results()
@@ -157,11 +173,81 @@ def export_books():
     messagebox.showinfo('Exportar livros', 'Acervo exportado com sucesso.')
 
 
+def import_books():
+    file_path = filedialog.askopenfilename(
+        title='Selecionar acervo CSV',
+        filetypes=[('Arquivo CSV', '*.csv'), ('Todos os arquivos', '*.*')]
+    )
+    if not file_path:
+        return
+
+    required_fields = {
+        'Nome do livro',
+        'Autor',
+        'Categoria',
+        'Assunto',
+        'Quantidade',
+        'Codigos de registro'
+    }
+    imported = 0
+    skipped = 0
+    errors = []
+
+    try:
+        with open(file_path, 'r', newline='', encoding='utf-8-sig') as csv_file:
+            reader = csv.DictReader(csv_file, delimiter=';')
+            if not reader.fieldnames or not required_fields.issubset(reader.fieldnames):
+                messagebox.showerror(
+                    'Importar livros',
+                    'O CSV deve ter o mesmo formato do arquivo exportado pelo LiBok.'
+                )
+                return
+
+            for line_number, row in enumerate(reader, start=2):
+                values = {field: (row.get(field) or '').strip() for field in required_fields}
+                if not all(values.values()):
+                    errors.append(f'Linha {line_number}: existem campos vazios.')
+                    continue
+
+                try:
+                    quantity = int(values['Quantidade'])
+                except ValueError:
+                    errors.append(f'Linha {line_number}: quantidade invalida.')
+                    continue
+
+                codes = [code.strip() for code in values['Codigos de registro'].split(',') if code.strip()]
+                if quantity <= 0 or len(codes) != quantity:
+                    errors.append(f'Linha {line_number}: quantidade e codigos nao correspondem.')
+                    continue
+
+                if database.create_book(
+                    values['Nome do livro'],
+                    values['Autor'],
+                    values['Categoria'],
+                    values['Assunto'],
+                    quantity,
+                    codes
+                ):
+                    imported += 1
+                else:
+                    skipped += 1
+    except (OSError, csv.Error) as error:
+        messagebox.showerror('Importar livros', f'Nao foi possivel ler o CSV: {error}')
+        return
+
+    message = f'{imported} livro(s) importado(s).'
+    if skipped:
+        message += f' {skipped} duplicado(s) ignorado(s).'
+    if errors:
+        message += f' {len(errors)} linha(s) com erro.'
+    messagebox.showinfo('Importar livros', message)
+
+
 def open_edit_window(book, refresh_results):
     window = ctk.CTkToplevel()
     window.title('Editar livro')
     window.geometry('720x780')
-    window.minsize(640, 700)
+    window.minsize(360, 560)
     window.iconbitmap(str(Path(__file__).parent.parent / 'img' / 'icon.ico'))
     window.configure(fg_color='#8284BD')
     window.grab_set()

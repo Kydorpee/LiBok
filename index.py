@@ -1,12 +1,15 @@
 import customtkinter as ctk
 from pathlib import Path
 from tkinter import PhotoImage
+import database.database as database
 from pages import dashboard, search, register
 
 try:
 	from PIL import Image
 except ImportError:
 	Image = None
+
+database.initialize_database()
 
 app = ctk.CTk() 
 
@@ -17,9 +20,9 @@ color3 = '#F3D38A'
 color4 = '#8284BD'
 
 app.title('LiBok')
-app.geometry('1000x900')
+app.geometry('1000x700')
 app.iconbitmap(str(Path(__file__).parent / 'img' / 'icon.ico'))
-app.minsize(1000, 400)
+app.minsize(360, 400)
 
 app.configure(fg_color=color1)
 
@@ -53,12 +56,20 @@ def show_start_screen():
 		)
 	else:
 		start_image = PhotoImage(file=image_path)
-	ctk.CTkLabel(
+	start_label = ctk.CTkLabel(
 		content,
 		text='',
 		image=start_image,
 		fg_color=color1
-	).grid(row=0, column=0, sticky='nsew')
+	)
+	start_label.grid(row=0, column=0, sticky='nsew')
+
+	if Image is not None:
+		def resize_start_image(event=None):
+			size = max(120, min(320, content.winfo_width() - 48, content.winfo_height() - 48))
+			start_image.configure(size=(size, size))
+
+		content.bind('<Configure>', resize_start_image)
 
 
 nav_bar = ctk.CTkFrame(app, corner_radius=18, fg_color=color2)
@@ -68,6 +79,24 @@ for column in range(3):
 
 tooltip_window = None
 tooltip_after_id = None
+nav_buttons = []
+
+
+def update_nav_layout(event=None):
+	columns = 1 if nav_bar.winfo_width() < 620 else 3
+	for index, button in enumerate(nav_buttons):
+		button.grid_configure(
+			row=index // columns,
+			column=index % columns,
+			padx=8,
+			pady=8,
+			sticky='ew'
+		)
+	for column in range(3):
+		nav_bar.grid_columnconfigure(column, weight=1 if column < columns else 0)
+
+
+nav_bar.bind('<Configure>', update_nav_layout)
 
 def show_tooltip(widget, text):
 	global tooltip_window, tooltip_after_id
@@ -119,7 +148,8 @@ for column, (page_name, page_label, tooltip_text) in enumerate([
 		text_color='white',
 		font=('Segoe UI', 20)
 	)
-	button.grid(row=0, column=column, padx=8, pady=12, sticky='ew')
+	button.grid(row=0, column=column, padx=8, pady=8, sticky='ew')
+	nav_buttons.append(button)
 	button.bind('<Enter>', lambda event, text=tooltip_text: show_tooltip(event.widget, text))
 	button.bind('<Leave>', lambda event: hide_tooltip())
 

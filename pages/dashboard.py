@@ -39,12 +39,12 @@ def show_page(parent):
 
     chart = ctk.CTkCanvas(
         page,
-        width=420,
-        height=420,
+        width=280,
+        height=280,
         background='#8284BD',
         highlightthickness=0
     )
-    chart.grid(row=1, column=0, padx=24, pady=16)
+    chart.grid(row=1, column=0, padx=24, pady=16, sticky='nsew')
 
     def redraw(event=None):
         draw_pie_chart(chart, categories, total_books)
