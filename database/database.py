@@ -1,6 +1,7 @@
 import os
 import sqlite3
 import sys
+from contextlib import contextmanager
 from pathlib import Path
 from unicodedata import combining, normalize
 
@@ -11,11 +12,20 @@ else:
     DATABASE_PATH = Path(__file__).with_name('libok.db')
 
 
+@contextmanager
 def get_connection():
     DATABASE_PATH.parent.mkdir(parents=True, exist_ok=True)
     connection = sqlite3.connect(DATABASE_PATH)
     connection.row_factory = sqlite3.Row
-    return connection
+    try:
+        yield connection
+    except Exception:
+        connection.rollback()
+        raise
+    else:
+        connection.commit()
+    finally:
+        connection.close()
 
 
 def initialize_database():
@@ -53,6 +63,35 @@ def create_book(name, author, category, subject, quantity, registration_codes):
             (name, author, category, subject, quantity, '\n'.join(registration_codes))
         )
     return True
+
+
+def create_books_bulk(books):
+    imported = 0
+    skipped = 0
+
+    with get_connection() as connection:
+        existing_names = {
+            normalize_search_text(row['name'])
+            for row in connection.execute('SELECT name FROM books')
+        }
+        for name, author, category, subject, quantity, registration_codes in books:
+            normalized_name = normalize_search_text(name)
+            if normalized_name in existing_names:
+                skipped += 1
+                continue
+
+            connection.execute(
+                '''
+                INSERT INTO books
+                    (name, author, category, subject, quantity, registration_codes)
+                VALUES (?, ?, ?, ?, ?, ?)
+                ''',
+                (name, author, category, subject, quantity, '\n'.join(registration_codes))
+            )
+            existing_names.add(normalized_name)
+            imported += 1
+
+    return imported, skipped
 
 
 def list_books(search_text=''):

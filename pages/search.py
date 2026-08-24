@@ -60,6 +60,7 @@ def show_page(parent):
     results = ctk.CTkScrollableFrame(page, fg_color='#F1F1F4', corner_radius=18)
     results.grid(row=2, column=0, padx=40, pady=(0, 28), sticky='nsew')
     results.grid_columnconfigure(0, weight=1)
+    search_after_id = None
 
     def refresh_results(event=None):
         for widget in results.winfo_children():
@@ -122,7 +123,13 @@ def show_page(parent):
                 command=lambda selected_book=book: delete_selected_book(selected_book, refresh_results)
             ).grid(row=1, column=1, padx=(6, 16), pady=(0, 12), sticky='ew')
             
-    search_entry.bind('<KeyRelease>', refresh_results)
+    def schedule_refresh(event=None):
+        nonlocal search_after_id
+        if search_after_id is not None:
+            page.after_cancel(search_after_id)
+        search_after_id = page.after(180, refresh_results)
+
+    search_entry.bind('<KeyRelease>', schedule_refresh)
     refresh_results()
 
 
@@ -192,6 +199,7 @@ def import_books():
     imported = 0
     skipped = 0
     errors = []
+    valid_books = []
 
     try:
         with open(file_path, 'r', newline='', encoding='utf-8-sig') as csv_file:
@@ -220,17 +228,16 @@ def import_books():
                     errors.append(f'Linha {line_number}: quantidade e codigos nao correspondem.')
                     continue
 
-                if database.create_book(
+                valid_books.append((
                     values['Nome do livro'],
                     values['Autor'],
                     values['Categoria'],
                     values['Assunto'],
                     quantity,
                     codes
-                ):
-                    imported += 1
-                else:
-                    skipped += 1
+                ))
+
+        imported, skipped = database.create_books_bulk(valid_books)
     except (OSError, csv.Error) as error:
         messagebox.showerror('Importar livros', f'Nao foi possivel ler o CSV: {error}')
         return
