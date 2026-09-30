@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org" th:replace="~{layout :: pagina('Prévia da importação', ~{::conteudo})}">
+<body>
+<th:block th:fragment="conteudo">
+    <section class="cartao">
+        <div class="cartao-cabecalho">
+            <span class="icone-redondo fundo-azul"><svg class="ic"><use href="/img/icones.svg#i-planilha"/></svg></span>
+            <div>
+                <h2 th:text="${pendente.nomeArquivo}">arquivo.csv</h2>
+                <small class="fraco" th:text="${pendente.origem}">CSV</small>
+            </div>
+            <div class="lado grupo-botoes">
+                <span class="selo selo-verde" th:text="${analise.totalValidos()} + ' para importar'">10</span>
+                <span class="selo selo-amarelo" th:text="${analise.totalDuplicados()} + ' já cadastrado(s)'">1</span>
+                <span class="selo selo-vermelho" th:text="${analise.totalErros()} + ' com erro'">2</span>
+            </div>
+        </div>
+
+        <div class="aviso aviso-info" th:if="${analise.totalValidos() > 0}">
+            <svg class="ic"><use href="/img/icones.svg#i-info"/></svg>
+            <p>Nada foi gravado ainda. Confira a lista e confirme para cadastrar os livros válidos. Linhas duplicadas ou com erro serão ignoradas e ficam registradas no log.</p>
+        </div>
+        <div class="aviso aviso-atencao" th:if="${analise.totalValidos() == 0}">
+            <svg class="ic"><use href="/img/icones.svg#i-alerta"/></svg>
+            <p>Nenhum livro deste arquivo pode ser importado. Corrija a planilha e envie novamente.</p>
+        </div>
+
+        <div class="rodape-form" style="margin: 16px 0">
+            <form th:action="@{/importacao/cancelar}" method="post">
+                <button class="botao botao-contorno" type="submit">Cancelar</button>
+            </form>
+            <form th:action="@{/importacao/confirmar}" method="post" th:if="${analise.totalValidos() > 0}">
+                <button class="botao botao-primario" type="submit"><svg class="ic ic-p"><use href="/img/icones.svg#i-check"/></svg>
+                    <span th:text="'Importar ' + ${analise.totalValidos()} + ' livro(s)'">Importar</span></button>
+            </form>
+        </div>
+
+        <ul th:if="${!analise.errosDeFormato().isEmpty()}" class="aviso aviso-erro" style="display: block; padding-left: 34px; margin: 0 0 16px">
+            <li th:each="e : ${analise.errosDeFormato()}" th:text="${e}" style="font-weight: 500">erro</li>
+        </ul>
+
+        <div class="tabela-rolagem" th:if="${!analise.itens().isEmpty()}">
+            <table class="tabela">
+                <thead><tr><th>Linha</th><th>Título</th><th>Autor</th><th>Categoria</th><th>Códigos</th><th>Resultado</th></tr></thead>
+                <tbody>
+                <tr th:each="item : ${analise.itens()}">
+                    <td class="fraco" th:text="${item.linha().linha()}">2</td>
+                    <td class="forte" th:text="${item.linha().titulo()}">Título</td>
+                    <td th:text="${item.linha().autor()}">Autor</td>
+                    <td th:text="${item.linha().categoria()}">Categoria</td>
+                    <td class="fraco" th:text="${#strings.listJoin(item.linha().codigos(), ', ')}" style="max-width: 220px">A-1</td>
+                    <td>
+                        <span class="selo selo-verde" th:if="${item.situacao().name() == 'VALIDO'}" th:text="${item.mensagem()}">OK</span>
+                        <span class="selo selo-amarelo" th:if="${item.situacao().name() == 'DUPLICADO'}" th:text="${item.mensagem()}">Duplicado</span>
+                        <span class="selo selo-vermelho" th:if="${item.situacao().name() == 'ERRO'}" th:text="${item.mensagem()}" style="white-space: normal">Erro</span>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+</th:block>
+</body>
+</html>

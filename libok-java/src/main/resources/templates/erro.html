@@ -1,0 +1,13 @@
+<!DOCTYPE html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org" th:replace="~{layout :: pagina('Não encontrado', ~{::conteudo})}">
+<body>
+<th:block th:fragment="conteudo">
+    <section class="cartao estado-vazio">
+        <span class="icone-redondo fundo-amarelo"><svg class="ic ic-g"><use href="/img/icones.svg#i-busca"/></svg></span>
+        <h3 th:text="${mensagem} ?: 'Página não encontrada'">Página não encontrada</h3>
+        <p>O item pode ter sido excluído.</p>
+        <a class="botao botao-primario" th:href="@{/painel}">Ir para o painel</a>
+    </section>
+</th:block>
+</body>
+</html>

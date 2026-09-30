@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org" th:replace="~{layout :: pagina('Configurações', ~{::conteudo})}">
+<body>
+<th:block th:fragment="conteudo">
+    <div class="aviso aviso-atencao" th:if="${restauracaoAgendada}">
+        <svg class="ic"><use href="/img/icones.svg#i-alerta"/></svg>
+        <p><b>Restauração agendada.</b> Feche o LiBok (botão abaixo) e abra de novo para concluir. O banco atual será guardado em backups.</p>
+        <form th:action="@{/configuracoes/restauracao/cancelar}" method="post" style="margin-left: auto">
+            <button class="botao botao-contorno botao-p" type="submit">Cancelar restauração</button>
+        </form>
+    </div>
+
+    <div class="grade-2">
+        <form class="cartao formulario" th:action="@{/configuracoes}" method="post" th:object="${form}" novalidate>
+            <div class="cartao-cabecalho">
+                <span class="icone-redondo fundo-verde"><svg class="ic"><use href="/img/icones.svg#i-configuracoes"/></svg></span>
+                <h2>Biblioteca e empréstimos</h2>
+            </div>
+            <div class="grade-campos">
+                <div class="campo">
+                    <label for="nomeBiblioteca">Nome da biblioteca</label>
+                    <input class="entrada" th:field="*{nomeBiblioteca}" th:errorclass="invalida" maxlength="80">
+                    <span class="erro-campo" th:errors="*{nomeBiblioteca}"></span>
+                </div>
+                <div class="campo c3">
+                    <label for="prazoEmprestimoDias">Prazo padrão de empréstimo (dias)</label>
+                    <input class="entrada" th:field="*{prazoEmprestimoDias}" th:errorclass="invalida" type="number" min="1" max="365">
+                    <span class="erro-campo" th:errors="*{prazoEmprestimoDias}"></span>
+                </div>
+                <div class="campo c3">
+                    <label for="limiteEmprestimos">Livros por leitor ao mesmo tempo</label>
+                    <input class="entrada" th:field="*{limiteEmprestimos}" th:errorclass="invalida" type="number" min="1" max="50">
+                    <span class="erro-campo" th:errors="*{limiteEmprestimos}"></span>
+                </div>
+                <div class="campo">
+                    <label class="caixa-selecao"><input type="checkbox" th:field="*{bloquearComAtraso}"> Bloquear novos empréstimos para quem tem livro em atraso</label>
+                </div>
+            </div>
+            <div class="rodape-form">
+                <button class="botao botao-primario" type="submit"><svg class="ic ic-p"><use href="/img/icones.svg#i-check"/></svg>Salvar configurações</button>
+            </div>
+        </form>
+
+        <section class="cartao">
+            <div class="cartao-cabecalho">
+                <span class="icone-redondo fundo-azul"><svg class="ic"><use href="/img/icones.svg#i-escudo"/></svg></span>
+                <h2>Onde ficam os dados</h2>
+            </div>
+            <p style="margin-top: 0; color: var(--texto-2)">Banco de dados, backups e registros do LiBok ficam nesta pasta do computador:</p>
+            <pre class="log" style="max-height: none" th:text="${pastaDados}">C:\Users\...\LiBok</pre>
+            <p style="color: var(--texto-2)">Um backup automático é criado todo dia na primeira abertura (os 10 últimos são mantidos).</p>
+            <form th:action="@{/configuracoes/encerrar}" method="post"
+                  data-titulo="Fechar o LiBok" data-botao="Fechar" data-confirmar="Encerrar o LiBok agora? Para usar de novo, abra o programa pelo atalho.">
+                <button class="botao botao-contorno" type="submit"><svg class="ic ic-p"><use href="/img/icones.svg#i-sair"/></svg>Fechar o LiBok</button>
+            </form>
+        </section>
+    </div>
+
+    <section class="cartao" id="backups">
+        <div class="cartao-cabecalho">
+            <span class="icone-redondo fundo-amarelo"><svg class="ic"><use href="/img/icones.svg#i-banco"/></svg></span>
+            <h2>Backups</h2>
+            <div class="lado">
+                <form th:action="@{/configuracoes/backup}" method="post">
+                    <button class="botao botao-primario botao-p" type="submit"><svg class="ic ic-p"><use href="/img/icones.svg#i-mais"/></svg>Fazer backup agora</button>
+                </form>
+            </div>
+        </div>
+        <div class="grade-2">
+            <div class="tabela-rolagem">
+                <table class="tabela" th:if="${!backups.isEmpty()}">
+                    <thead><tr><th>Arquivo</th><th>Criado em</th><th>Tamanho</th><th class="direita">Ações</th></tr></thead>
+                    <tbody>
+                    <tr th:each="b : ${backups}">
+                        <td class="forte" th:text="${b.nome}">backup.db</td>
+                        <td th:text="${b.criadoEm != null} ? ${#temporals.format(b.criadoEm, 'dd/MM/yyyy HH:mm')} : '—'">01/01</td>
+                        <td class="fraco" th:text="${b.tamanhoKb} + ' KB'">12 KB</td>
+                        <td><div class="acoes">
+                            <a class="botao botao-contorno botao-p" th:href="@{/configuracoes/backups/{nome}(nome=${b.nome})}"><svg class="ic ic-p"><use href="/img/icones.svg#i-exportar"/></svg>Baixar</a>
+                            <form th:action="@{/configuracoes/backups/{nome}/restaurar(nome=${b.nome})}" method="post"
+                                  data-titulo="Restaurar backup" data-botao="Restaurar"
+                                  th:attr="data-confirmar='Voltar os dados para o backup ' + ${b.nome} + '? A troca acontece ao reabrir o LiBok; o banco atual será guardado.'">
+                                <button class="botao botao-amarelo botao-p" type="submit"><svg class="ic ic-p"><use href="/img/icones.svg#i-renovar"/></svg>Restaurar</button>
+                            </form>
+                        </div></td>
+                    </tr>
+                    </tbody>
+                </table>
+                <div class="estado-vazio" th:if="${backups.isEmpty()}" style="padding: 20px"><p>Nenhum backup ainda.</p></div>
+            </div>
+            <form th:action="@{/configuracoes/restaurar}" method="post" enctype="multipart/form-data" class="formulario"
+                  data-titulo="Restaurar backup" data-botao="Restaurar"
+                  data-confirmar="Substituir os dados atuais por este backup? A troca acontece ao reabrir o LiBok; o banco atual será guardado.">
+                <label class="area-envio amarela">
+                    <input type="file" name="arquivo" accept=".db">
+                    <svg class="ic ic-g"><use href="/img/icones.svg#i-importar"/></svg>
+                    <strong>Restaurar de um arquivo</strong>
+                    <small>Backup (.db) salvo em pendrive ou outra pasta</small>
+                    <span class="nome-arquivo" hidden></span>
+                </label>
+                <button class="botao botao-amarelo" type="submit" data-requer-arquivo disabled>Restaurar este arquivo</button>
+            </form>
+        </div>
+    </section>
+</th:block>
+</body>
+</html>

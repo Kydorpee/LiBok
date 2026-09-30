@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org" th:replace="~{layout :: pagina('Acervo', ~{::conteudo})}">
+<body>
+<th:block th:fragment="conteudo">
+    <form class="barra-filtros" th:action="@{/acervo}" method="get" data-busca-instantanea data-alvo="#resultados" th:object="${filtro}">
+        <label class="busca-grande">
+            <svg class="ic"><use href="/img/icones.svg#i-busca"/></svg>
+            <span class="oculto-visual">Buscar</span>
+            <input type="search" th:field="*{busca}" placeholder="Buscar por título, autor, assunto, ISBN ou código…" autofocus autocomplete="off">
+        </label>
+        <label class="oculto-visual" for="categoria">Categoria</label>
+        <select class="entrada" th:field="*{categoria}">
+            <option value="">Todas as categorias</option>
+            <option th:each="c : ${categorias}" th:value="${c.id}" th:text="${c.nome}">Romance</option>
+        </select>
+        <label class="oculto-visual" for="ordem">Ordenar</label>
+        <select class="entrada" th:field="*{ordem}">
+            <option value="titulo">Título (A–Z)</option>
+            <option value="autor">Autor (A–Z)</option>
+            <option value="recentes">Cadastrados recentemente</option>
+        </select>
+        <label class="caixa-selecao"><input type="checkbox" th:field="*{disponiveis}"> Só disponíveis</label>
+    </form>
+
+    <div id="resultados" th:fragment="resultados">
+        <div class="info-resultados">
+            <span th:text="${pagina.totalElements} + (${pagina.totalElements == 1} ? ' livro encontrado' : ' livros encontrados')">0 livros</span>
+            <div class="grupo-botoes">
+                <a class="botao botao-contorno botao-p" th:href="@{/exportar/acervo.csv}"><svg class="ic ic-p"><use href="/img/icones.svg#i-exportar"/></svg>Exportar CSV</a>
+                <a class="botao botao-primario botao-p" th:href="@{/acervo/novo}"><svg class="ic ic-p"><use href="/img/icones.svg#i-mais"/></svg>Novo livro</a>
+            </div>
+        </div>
+
+        <div class="grade-livros" th:if="${pagina.hasContent()}" style="margin-top: 16px">
+            <article class="cartao-livro" th:each="livro : ${pagina.content}">
+                <a class="capa" th:href="@{/acervo/{id}(id=${livro.id})}" th:style="'--cor:' + ${livro.corCategoria}" th:text="${livro.sigla}" aria-hidden="true" tabindex="-1">AB</a>
+                <div class="info">
+                    <h3><a th:href="@{/acervo/{id}(id=${livro.id})}" th:text="${livro.titulo}">Título</a></h3>
+                    <span class="autor" th:text="${livro.autor}">Autor</span>
+                    <span class="categoria"><span class="ponto-categoria" th:style="'background:' + ${livro.corCategoria}"></span><span th:text="${livro.categoria}">Categoria</span></span>
+                    <span>
+                        <span class="selo" th:classappend="${livro.disponiveis > 0} ? 'selo-verde' : 'selo-vermelho'"
+                              th:text="${livro.disponiveis > 0} ? ${livro.disponiveis} + ' de ' + ${livro.quantidade} + (${livro.disponiveis == 1} ? ' disponível' : ' disponíveis') : 'Nenhum disponível'">2 de 3</span>
+                    </span>
+                </div>
+                <div class="rodape-cartao">
+                    <a class="botao botao-contorno botao-p" th:href="@{/acervo/{id}(id=${livro.id})}"><svg class="ic ic-p"><use href="/img/icones.svg#i-olho"/></svg>Detalhes</a>
+                    <a class="botao botao-azul botao-p" th:classappend="${livro.disponiveis == 0} ? 'desabilitado'"
+                       th:href="@{/emprestimos/novo(livro=${livro.id})}"
+                       th:attr="aria-disabled=${livro.disponiveis == 0}"><svg class="ic ic-p"><use href="/img/icones.svg#i-emprestimos"/></svg>Emprestar</a>
+                </div>
+            </article>
+        </div>
+
+        <div class="cartao estado-vazio" th:if="${!pagina.hasContent()}" style="margin-top: 16px">
+            <span class="icone-redondo fundo-amarelo"><svg class="ic ic-g"><use href="/img/icones.svg#i-busca"/></svg></span>
+            <h3>Nenhum livro encontrado</h3>
+            <p th:if="${filtro.busca != null and !filtro.busca.isBlank()}">Confira a grafia ou tente buscar pelo autor ou pelo código do exemplar.</p>
+            <p th:unless="${filtro.busca != null and !filtro.busca.isBlank()}">O acervo ainda está vazio. Cadastre o primeiro livro ou importe uma planilha.</p>
+            <div class="grupo-botoes">
+                <a class="botao botao-primario" th:href="@{/acervo/novo}">Cadastrar livro</a>
+                <a class="botao botao-amarelo" th:href="@{/importacao}">Importar planilha</a>
+            </div>
+        </div>
+
+        <nav class="paginacao" th:if="${pagina.totalPages > 1}" aria-label="Páginas">
+            <a class="botao botao-contorno botao-p" th:classappend="${pagina.first} ? 'desabilitado'"
+               th:href="@{/acervo(busca=${filtro.busca}, categoria=${filtro.categoria}, ordem=${filtro.ordem}, disponiveis=${filtro.disponiveis}, pagina=${pagina.number - 1})}">
+                <svg class="ic ic-p"><use href="/img/icones.svg#i-anterior"/></svg>Anterior</a>
+            <span th:text="'Página ' + ${pagina.number + 1} + ' de ' + ${pagina.totalPages}">Página 1 de 3</span>
+            <a class="botao botao-contorno botao-p" th:classappend="${pagina.last} ? 'desabilitado'"
+               th:href="@{/acervo(busca=${filtro.busca}, categoria=${filtro.categoria}, ordem=${filtro.ordem}, disponiveis=${filtro.disponiveis}, pagina=${pagina.number + 1})}">
+                Próxima<svg class="ic ic-p"><use href="/img/icones.svg#i-proximo"/></svg></a>
+        </nav>
+    </div>
+</th:block>
+</body>
+</html>

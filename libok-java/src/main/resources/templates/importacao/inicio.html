@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org" th:replace="~{layout :: pagina('Importar e exportar', ~{::conteudo})}">
+<body>
+<th:block th:fragment="conteudo">
+    <div class="grade-2">
+        <div class="coluna">
+            <section class="cartao">
+                <div class="cartao-cabecalho">
+                    <span class="icone-redondo fundo-azul"><svg class="ic"><use href="/img/icones.svg#i-planilha"/></svg></span>
+                    <h2>Cadastrar livros por planilha (CSV)</h2>
+                </div>
+                <p class="cartao-subtitulo" style="margin-top: 0">
+                    Use o mesmo formato do arquivo exportado pelo LiBok — inclusive planilhas da versão antiga.
+                    Separador <b>;</b> ou <b>,</b>, arquivos do Excel ou UTF-8. Você confere tudo antes de gravar.
+                </p>
+                <form th:action="@{/importacao/csv}" method="post" enctype="multipart/form-data" class="formulario">
+                    <label class="area-envio">
+                        <input type="file" name="arquivo" accept=".csv,text/csv">
+                        <svg class="ic ic-g"><use href="/img/icones.svg#i-importar"/></svg>
+                        <strong>Enviar arquivo CSV</strong>
+                        <small>Arraste aqui ou clique para escolher</small>
+                        <span class="nome-arquivo" hidden></span>
+                    </label>
+                    <div class="campo">
+                        <span class="rotulo">Exemplo de planilha</span>
+                        <div class="tabela-rolagem">
+                            <table class="tabela exemplo-csv">
+                                <thead><tr><th>Nome do livro</th><th>Autor</th><th>Categoria</th><th>Assunto</th><th>Quantidade</th><th>Codigos de registro</th></tr></thead>
+                                <tbody>
+                                <tr><td>Dom Casmurro</td><td>Machado de Assis</td><td>Romance</td><td>Literatura brasileira</td><td>2</td><td>ROM-001, ROM-002</td></tr>
+                                <tr><td>O Pequeno Príncipe</td><td>Antoine de Saint-Exupéry</td><td>Infantil</td><td>Fábula</td><td>1</td><td>INF-014</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <span class="dica">Colunas opcionais: ISBN, Ano de publicacao, Descricao. A coluna Quantidade é opcional; se existir, precisa bater com os códigos.</span>
+                    </div>
+                    <div class="rodape-form">
+                        <button class="botao botao-azul" type="submit" data-requer-arquivo disabled>
+                            <svg class="ic ic-p"><use href="/img/icones.svg#i-check"/></svg>Validar planilha</button>
+                    </div>
+                </form>
+            </section>
+
+            <section class="cartao">
+                <div class="cartao-cabecalho">
+                    <span class="icone-redondo fundo-amarelo"><svg class="ic"><use href="/img/icones.svg#i-banco"/></svg></span>
+                    <h2>Trazer dados do LiBok antigo</h2>
+                </div>
+                <p class="cartao-subtitulo" style="margin-top: 0">
+                    Envie o arquivo <b>libok.db</b> da versão anterior. Ele costuma ficar em <code>%APPDATA%\LiBok\libok.db</code>
+                    ou na pasta <code>database</code> do programa antigo.
+                </p>
+                <form th:if="${bancoAntigo != null}" th:action="@{/importacao/legado-local}" method="post" style="margin-bottom: 16px">
+                    <div class="aviso aviso-sucesso" style="align-items: center">
+                        <svg class="ic"><use href="/img/icones.svg#i-check"/></svg>
+                        <p>Encontramos o banco do LiBok antigo neste computador: <code th:text="${bancoAntigo}"></code></p>
+                        <button class="botao botao-primario botao-p" type="submit" style="margin-left: auto; width: auto; height: 34px; padding: 0 12px">Ler agora</button>
+                    </div>
+                </form>
+                <form th:action="@{/importacao/legado}" method="post" enctype="multipart/form-data" class="formulario">
+                    <label class="area-envio amarela">
+                        <input type="file" name="arquivo" accept=".db">
+                        <svg class="ic ic-g"><use href="/img/icones.svg#i-banco"/></svg>
+                        <strong>Enviar libok.db</strong>
+                        <small>Arraste aqui ou clique para escolher</small>
+                        <span class="nome-arquivo" hidden></span>
+                    </label>
+                    <div class="rodape-form">
+                        <button class="botao botao-amarelo" type="submit" data-requer-arquivo disabled>Ler banco antigo</button>
+                    </div>
+                </form>
+            </section>
+        </div>
+
+        <div class="coluna">
+            <section class="cartao" style="background: linear-gradient(160deg, #fff 40%, var(--azul-100))">
+                <div class="cartao-cabecalho">
+                    <span class="icone-redondo fundo-verde"><svg class="ic"><use href="/img/icones.svg#i-exportar"/></svg></span>
+                    <h2>Exportar</h2>
+                </div>
+                <p class="cartao-subtitulo" style="margin-top: 0">Planilhas CSV prontas para abrir no Excel.</p>
+                <div style="display: grid; gap: 10px">
+                    <a class="botao botao-primario botao-bloco" th:href="@{/exportar/acervo.csv}"><svg class="ic ic-p"><use href="/img/icones.svg#i-acervo"/></svg>Acervo completo</a>
+                    <a class="botao botao-azul botao-bloco" th:href="@{/exportar/emprestimos.csv}"><svg class="ic ic-p"><use href="/img/icones.svg#i-emprestimos"/></svg>Empréstimos</a>
+                    <a class="botao botao-amarelo botao-bloco" th:href="@{/exportar/leitores.csv}"><svg class="ic ic-p"><use href="/img/icones.svg#i-leitores"/></svg>Leitores</a>
+                </div>
+            </section>
+
+            <section class="cartao">
+                <div class="cartao-cabecalho">
+                    <span class="icone-redondo fundo-lilas"><svg class="ic"><use href="/img/icones.svg#i-relogio"/></svg></span>
+                    <h2>Histórico de importações</h2>
+                </div>
+                <table class="tabela" th:if="${!historico.isEmpty()}">
+                    <thead><tr><th>Arquivo</th><th>Data</th><th>Resultado</th><th></th></tr></thead>
+                    <tbody>
+                    <tr th:each="i : ${historico}">
+                        <td>
+                            <div class="forte" th:text="${i.nomeArquivo}" style="max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">arquivo.csv</div>
+                            <small class="fraco" th:text="${i.origem}">CSV</small>
+                        </td>
+                        <td th:text="${#temporals.format(i.realizadaEm, 'dd/MM HH:mm')}">15/05</td>
+                        <td>
+                            <span class="selo" th:classappend="${i.sucessoTotal} ? 'selo-verde' : 'selo-amarelo'"
+                                  th:text="${i.importados} + ' importado(s)'">10</span>
+                        </td>
+                        <td class="direita"><a class="botao botao-contorno botao-p" th:href="@{/importacao/{id}(id=${i.id})}">Ver log</a></td>
+                    </tr>
+                    </tbody>
+                </table>
+                <div class="estado-vazio" th:if="${historico.isEmpty()}" style="padding: 20px">
+                    <p>Nenhuma importação realizada ainda.</p>
+                </div>
+            </section>
+        </div>
+    </div>
+</th:block>
+</body>
+</html>

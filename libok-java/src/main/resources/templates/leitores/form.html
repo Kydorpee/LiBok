@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout :: pagina(${leitorId == null} ? 'Novo leitor' : 'Editar leitor', ~{::conteudo})}">
+<body>
+<th:block th:fragment="conteudo">
+    <a class="voltar" th:href="${leitorId == null} ? @{/leitores} : @{/leitores/{id}(id=${leitorId})}">
+        <svg class="ic ic-p"><use href="/img/icones.svg#i-anterior"/></svg>Voltar</a>
+
+    <form class="cartao formulario" method="post" th:object="${form}" style="max-width: 860px"
+          th:action="${leitorId == null} ? @{/leitores} : @{/leitores/{id}(id=${leitorId})}" novalidate>
+        <div class="cartao-cabecalho">
+            <span class="icone-redondo fundo-amarelo"><svg class="ic"><use href="/img/icones.svg#i-leitor-mais"/></svg></span>
+            <h2>Dados do leitor</h2>
+        </div>
+        <div class="grade-campos">
+            <div class="campo c4">
+                <label for="nome">Nome completo *</label>
+                <input class="entrada" th:field="*{nome}" th:errorclass="invalida" maxlength="150" autofocus>
+                <span class="erro-campo" th:errors="*{nome}"></span>
+            </div>
+            <div class="campo c2">
+                <label for="matricula">Matrícula / documento</label>
+                <input class="entrada" th:field="*{matricula}" th:errorclass="invalida" maxlength="50" placeholder="Opcional, único">
+                <span class="erro-campo" th:errors="*{matricula}"></span>
+            </div>
+            <div class="campo c2">
+                <label for="turma">Turma / setor</label>
+                <input class="entrada" th:field="*{turma}" maxlength="60" placeholder="Ex.: 5º ano B">
+                <span class="erro-campo" th:errors="*{turma}"></span>
+            </div>
+            <div class="campo c2">
+                <label for="telefone">Telefone</label>
+                <input class="entrada" th:field="*{telefone}" type="tel" maxlength="30">
+                <span class="erro-campo" th:errors="*{telefone}"></span>
+            </div>
+            <div class="campo c2">
+                <label for="email">E-mail</label>
+                <input class="entrada" th:field="*{email}" th:errorclass="invalida" type="email" maxlength="150">
+                <span class="erro-campo" th:errors="*{email}"></span>
+            </div>
+            <div class="campo">
+                <label for="observacao">Observação</label>
+                <textarea class="entrada" th:field="*{observacao}" rows="3" maxlength="1000"></textarea>
+            </div>
+        </div>
+        <div class="rodape-form">
+            <a class="botao botao-fantasma" th:href="${leitorId == null} ? @{/leitores} : @{/leitores/{id}(id=${leitorId})}">Cancelar</a>
+            <button class="botao botao-primario" type="submit"><svg class="ic ic-p"><use href="/img/icones.svg#i-check"/></svg>Salvar</button>
+        </div>
+    </form>
+</th:block>
+</body>
+</html>

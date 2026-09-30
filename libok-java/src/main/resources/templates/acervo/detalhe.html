@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org" th:replace="~{layout :: pagina('Detalhes do livro', ~{::conteudo})}">
+<body>
+<th:block th:fragment="conteudo" th:with="livro=${detalhe.livro}">
+    <a class="voltar" th:href="@{/acervo}"><svg class="ic ic-p"><use href="/img/icones.svg#i-anterior"/></svg>Voltar ao acervo</a>
+
+    <section class="cartao cabecalho-detalhe">
+        <div class="capa capa-g" th:style="'--cor:' + ${livro.categoria.cor}"
+             th:text="${livro.sigla}" aria-hidden="true">AB</div>
+        <div class="dados">
+            <span class="categoria"><span class="ponto-categoria" th:style="'background:' + ${livro.categoria.cor}"></span><span th:text="${livro.categoria.nome}">Categoria</span></span>
+            <h2 th:text="${livro.titulo}">Título</h2>
+            <span class="autor" th:text="${livro.autor}">Autor</span>
+            <div class="grupo-botoes">
+                <span class="selo" th:classappend="${livro.disponiveis > 0} ? 'selo-verde' : 'selo-vermelho'"
+                      th:text="${livro.disponiveis} + ' de ' + ${livro.quantidade} + (${livro.disponiveis == 1} ? ' disponível' : ' disponíveis')">2 de 3</span>
+            </div>
+            <dl class="lista-dados">
+                <div><dt>Assunto</dt><dd th:text="${livro.assunto}">Assunto</dd></div>
+                <div th:if="${livro.isbn}"><dt>ISBN</dt><dd th:text="${livro.isbn}">ISBN</dd></div>
+                <div th:if="${livro.anoPublicacao}"><dt>Ano</dt><dd th:text="${livro.anoPublicacao}">2020</dd></div>
+                <div><dt>Cadastrado em</dt><dd th:text="${#temporals.format(livro.criadoEm, 'dd/MM/yyyy')}">01/01/2026</dd></div>
+                <div><dt>Empréstimos</dt><dd th:text="${detalhe.historico.size()}">0</dd></div>
+            </dl>
+            <p class="descricao" th:if="${livro.descricao}" th:text="${livro.descricao}">Descrição</p>
+            <div class="grupo-botoes" style="margin-top: 6px">
+                <a class="botao botao-azul" th:classappend="${livro.disponiveis == 0} ? 'desabilitado'" th:href="@{/emprestimos/novo(livro=${livro.id})}">
+                    <svg class="ic ic-p"><use href="/img/icones.svg#i-emprestimos"/></svg>Emprestar</a>
+                <a class="botao botao-contorno" th:href="@{/acervo/{id}/editar(id=${livro.id})}">
+                    <svg class="ic ic-p"><use href="/img/icones.svg#i-editar"/></svg>Editar</a>
+                <form th:action="@{/acervo/{id}/excluir(id=${livro.id})}" method="post"
+                      data-titulo="Excluir livro" data-botao="Excluir"
+                      th:attr="data-confirmar='Excluir “' + ${livro.titulo} + '” e todo o seu histórico de empréstimos? Esta ação não pode ser desfeita.'">
+                    <button class="botao botao-perigo" type="submit"><svg class="ic ic-p"><use href="/img/icones.svg#i-excluir"/></svg>Excluir</button>
+                </form>
+            </div>
+        </div>
+    </section>
+
+    <div class="grade-2">
+        <section class="cartao">
+            <div class="cartao-cabecalho"><h2>Histórico de empréstimos</h2></div>
+            <div class="tabela-rolagem" th:if="${!detalhe.historico.isEmpty()}">
+                <table class="tabela">
+                    <thead><tr><th>Leitor</th><th>Código</th><th>Retirada</th><th>Devolução</th><th>Situação</th></tr></thead>
+                    <tbody>
+                    <tr th:each="e : ${detalhe.historico}">
+                        <td><a th:href="@{/leitores/{id}(id=${e.leitor.id})}" th:text="${e.leitor.nome}">Leitor</a></td>
+                        <td><span class="selo selo-codigo" th:text="${e.exemplar.codigo}">A-1</span></td>
+                        <td th:text="${#temporals.format(e.dataEmprestimo, 'dd/MM/yyyy')}">01/01</td>
+                        <td th:text="${e.dataDevolucao != null} ? ${#temporals.format(e.dataDevolucao, 'dd/MM/yyyy')} : 'até ' + ${#temporals.format(e.dataPrevista, 'dd/MM/yyyy')}">—</td>
+                        <td th:replace="~{emprestimos/lista :: situacao(${e})}"></td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="estado-vazio" th:if="${detalhe.historico.isEmpty()}">
+                <span class="icone-redondo fundo-azul"><svg class="ic"><use href="/img/icones.svg#i-emprestimos"/></svg></span>
+                <p>Este livro ainda não foi emprestado.</p>
+            </div>
+        </section>
+
+        <section class="cartao">
+            <div class="cartao-cabecalho"><h2>Exemplares</h2><span class="lado" th:text="${detalhe.exemplares.size()}">3</span></div>
+            <table class="tabela">
+                <tbody>
+                <tr th:each="linha : ${detalhe.exemplares}" th:with="ex=${linha.exemplar}">
+                    <td><span class="selo selo-codigo" th:text="${ex.codigo}">A-1</span></td>
+                    <td>
+                        <span class="selo selo-verde" th:if="${ex.situacao.name() == 'DISPONIVEL'}">Disponível</span>
+                        <span th:if="${ex.situacao.name() == 'EMPRESTADO'}">
+                            <span class="selo selo-azul">Emprestado</span>
+                            <small class="fraco" th:if="${linha.emprestimoAtivo != null}" th:text="${linha.emprestimoAtivo.leitor.primeiroNome}">Ana</small>
+                        </span>
+                        <span class="selo selo-cinza" th:if="${ex.situacao.name() == 'BAIXADO'}">Baixado</span>
+                    </td>
+                    <td class="direita">
+                        <form th:if="${ex.situacao.name() == 'DISPONIVEL'}" th:action="@{/acervo/exemplares/{id}/baixar(id=${ex.id})}" method="post"
+                              data-titulo="Dar baixa no exemplar" data-botao="Dar baixa"
+                              th:attr="data-confirmar='Marcar o exemplar ' + ${ex.codigo} + ' como baixado (perdido, danificado ou descartado)? Ele deixa de poder ser emprestado.'">
+                            <button class="botao botao-fantasma botao-p" type="submit" title="Dar baixa"><svg class="ic ic-p"><use href="/img/icones.svg#i-baixar"/></svg>Baixa</button>
+                        </form>
+                        <form th:if="${ex.situacao.name() == 'BAIXADO'}" th:action="@{/acervo/exemplares/{id}/reativar(id=${ex.id})}" method="post">
+                            <button class="botao botao-fantasma botao-p" type="submit"><svg class="ic ic-p"><use href="/img/icones.svg#i-renovar"/></svg>Reativar</button>
+                        </form>
+                        <form th:if="${linha.emprestimoAtivo != null}" th:action="@{/emprestimos/{id}/devolver(id=${linha.emprestimoAtivo.id})}" method="post">
+                            <button class="botao botao-primario botao-p" type="submit"><svg class="ic ic-p"><use href="/img/icones.svg#i-devolver"/></svg>Devolver</button>
+                        </form>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+        </section>
+    </div>
+</th:block>
+</body>
+</html>

@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org" th:replace="~{layout :: pagina('Log da importação', ~{::conteudo})}">
+<body>
+<th:block th:fragment="conteudo">
+    <a class="voltar" th:href="@{/importacao}"><svg class="ic ic-p"><use href="/img/icones.svg#i-anterior"/></svg>Voltar</a>
+    <section class="cartao">
+        <div class="cartao-cabecalho">
+            <span class="icone-redondo" th:classappend="${importacao.sucessoTotal} ? 'fundo-verde' : 'fundo-amarelo'"><svg class="ic"><use href="/img/icones.svg#i-planilha"/></svg></span>
+            <div>
+                <h2 th:text="${importacao.nomeArquivo}">arquivo.csv</h2>
+                <small class="fraco" th:text="${importacao.origem} + ' · ' + ${#temporals.format(importacao.realizadaEm, 'dd/MM/yyyy HH:mm')}">CSV</small>
+            </div>
+            <div class="lado grupo-botoes">
+                <span class="selo selo-verde" th:text="${importacao.importados} + ' importado(s)'">10</span>
+                <span class="selo selo-amarelo" th:text="${importacao.ignorados} + ' ignorado(s)'">1</span>
+                <span class="selo selo-vermelho" th:text="${importacao.comErro} + ' com erro'">0</span>
+            </div>
+        </div>
+        <pre class="log" th:text="${importacao.log}">log</pre>
+        <div class="rodape-form" style="margin-top: 16px">
+            <a class="botao botao-primario" th:href="@{/acervo(ordem='recentes')}">Ver livros importados</a>
+        </div>
+    </section>
+</th:block>
+</body>
+</html>

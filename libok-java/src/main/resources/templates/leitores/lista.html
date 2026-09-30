@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org" th:replace="~{layout :: pagina('Leitores', ~{::conteudo})}">
+<body>
+<th:block th:fragment="conteudo">
+    <form class="barra-filtros" th:action="@{/leitores}" method="get" data-busca-instantanea data-alvo="#resultados">
+        <label class="busca-grande">
+            <svg class="ic"><use href="/img/icones.svg#i-busca"/></svg>
+            <span class="oculto-visual">Buscar leitor</span>
+            <input type="search" name="busca" th:value="${busca}" placeholder="Buscar por nome, matrícula ou turma…" autofocus autocomplete="off">
+        </label>
+        <label class="caixa-selecao"><input type="checkbox" name="inativos" value="true" th:checked="${inativos}"> Mostrar inativos</label>
+        <a class="botao botao-primario" th:href="@{/leitores/novo}" style="height: 48px"><svg class="ic ic-p"><use href="/img/icones.svg#i-leitor-mais"/></svg>Novo leitor</a>
+    </form>
+
+    <section class="cartao" id="resultados" th:fragment="resultados">
+        <div class="tabela-rolagem" th:if="${pagina.hasContent()}">
+            <table class="tabela">
+                <thead><tr><th>Leitor</th><th>Matrícula</th><th>Turma</th><th>Contato</th><th>Situação</th><th class="direita"></th></tr></thead>
+                <tbody>
+                <tr th:each="l : ${pagina.content}">
+                    <td><div class="celula-leitor">
+                        <span class="avatar" th:style="'background:' + ${l.corAvatar}" th:text="${l.iniciais}">A</span>
+                        <a class="forte" th:href="@{/leitores/{id}(id=${l.id})}" th:text="${l.nome}">Nome</a>
+                    </div></td>
+                    <td th:text="${l.matricula} ?: '—'" th:classappend="${l.matricula == null} ? 'fraco'">123</td>
+                    <td th:text="${l.turma} ?: '—'" th:classappend="${l.turma == null} ? 'fraco'">3º A</td>
+                    <td th:text="${l.telefone} ?: (${l.email} ?: '—')" class="fraco">contato</td>
+                    <td><span class="selo" th:classappend="${l.ativo} ? 'selo-verde' : 'selo-cinza'" th:text="${l.ativo} ? 'Ativo' : 'Inativo'">Ativo</span></td>
+                    <td><div class="acoes">
+                        <a class="botao botao-contorno botao-p" th:href="@{/leitores/{id}(id=${l.id})}">Ver</a>
+                        <a class="botao botao-azul botao-p" th:if="${l.ativo}" th:href="@{/emprestimos/novo(leitor=${l.id})}">Emprestar</a>
+                    </div></td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="estado-vazio" th:if="${!pagina.hasContent()}">
+            <span class="icone-redondo fundo-amarelo"><svg class="ic ic-g"><use href="/img/icones.svg#i-leitores"/></svg></span>
+            <h3 th:text="${busca != null and !busca.isBlank()} ? 'Nenhum leitor encontrado' : 'Nenhum leitor cadastrado'">Nenhum leitor</h3>
+            <p>Cadastre os leitores para registrar empréstimos e acompanhar o histórico de cada um.</p>
+            <a class="botao botao-primario" th:href="@{/leitores/novo}">Cadastrar leitor</a>
+        </div>
+        <nav class="paginacao" th:if="${pagina.totalPages > 1}">
+            <a class="botao botao-contorno botao-p" th:classappend="${pagina.first} ? 'desabilitado'" th:href="@{/leitores(busca=${busca}, inativos=${inativos}, pagina=${pagina.number - 1})}">Anterior</a>
+            <span th:text="'Página ' + ${pagina.number + 1} + ' de ' + ${pagina.totalPages}"></span>
+            <a class="botao botao-contorno botao-p" th:classappend="${pagina.last} ? 'desabilitado'" th:href="@{/leitores(busca=${busca}, inativos=${inativos}, pagina=${pagina.number + 1})}">Próxima</a>
+        </nav>
+    </section>
+</th:block>
+</body>
+</html>

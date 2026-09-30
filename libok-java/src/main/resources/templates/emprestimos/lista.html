@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org" th:replace="~{layout :: pagina('Empréstimos', ~{::conteudo})}">
+<body>
+<th:block th:fragment="conteudo">
+    <div class="grupo-botoes">
+        <nav class="abas" aria-label="Filtro de empréstimos">
+            <a th:href="@{/emprestimos(aba='ativos')}" th:classappend="${aba == 'ativos'} ? 'ativo'">Em aberto</a>
+            <a th:href="@{/emprestimos(aba='atrasados')}" th:classappend="${aba == 'atrasados'} ? 'ativo'">Em atraso
+                <span class="contagem" th:if="${totalAtrasados > 0}" th:text="${totalAtrasados}">2</span></a>
+            <a th:href="@{/emprestimos(aba='historico')}" th:classappend="${aba == 'historico'} ? 'ativo'">Devolvidos</a>
+        </nav>
+        <form th:action="@{/emprestimos/devolucao}" method="post" class="busca-global" style="margin-left: auto; background: var(--verde-50); border-color: var(--verde-200); color: var(--verde-800)">
+            <svg class="ic ic-p"><use href="/img/icones.svg#i-codigo"/></svg>
+            <label class="oculto-visual" for="codigo-devolucao">Devolução rápida pelo código</label>
+            <input id="codigo-devolucao" name="codigo" placeholder="Devolução rápida: código do exemplar" required autocomplete="off">
+            <button class="botao botao-primario botao-p" type="submit" style="height: 30px; margin-right: -8px">Devolver</button>
+        </form>
+        <a class="botao botao-primario" th:href="@{/emprestimos/novo}"><svg class="ic ic-p"><use href="/img/icones.svg#i-mais"/></svg>Novo empréstimo</a>
+    </div>
+
+    <section class="cartao" th:if="${aba != 'historico'}">
+        <div class="tabela-rolagem" th:if="${!lista.isEmpty()}">
+            <table class="tabela">
+                <thead><tr><th>Leitor</th><th>Livro</th><th>Código</th><th>Retirada</th><th>Devolução prevista</th><th>Situação</th><th class="direita">Ações</th></tr></thead>
+                <tbody>
+                <tr th:each="e : ${lista}">
+                    <td><div class="celula-leitor">
+                        <span class="avatar" th:style="'background:' + ${e.leitor.corAvatar}" th:text="${e.leitor.iniciais}">A</span>
+                        <div><a th:href="@{/leitores/{id}(id=${e.leitor.id})}" th:text="${e.leitor.nome}">Nome</a>
+                            <div class="fraco" style="font-size: 12px" th:text="${e.leitor.resumo}"></div></div>
+                    </div></td>
+                    <td><a class="forte" style="color: inherit" th:href="@{/acervo/{id}(id=${e.exemplar.livro.id})}" th:text="${e.exemplar.livro.titulo}">Livro</a></td>
+                    <td><span class="selo selo-codigo" th:text="${e.exemplar.codigo}">A-1</span></td>
+                    <td th:text="${#temporals.format(e.dataEmprestimo, 'dd/MM/yyyy')}">01/01/2026</td>
+                    <td>
+                        <span th:text="${#temporals.format(e.dataPrevista, 'dd/MM/yyyy')}">15/01/2026</span>
+                        <small class="fraco" th:if="${e.renovacoes > 0}" th:text="'(' + ${e.renovacoes} + 'ª renovação)'"></small>
+                    </td>
+                    <td th:replace="~{emprestimos/lista :: situacao(${e})}"></td>
+                    <td><div class="acoes">
+                        <form th:action="@{/emprestimos/{id}/renovar(id=${e.id})}" method="post">
+                            <button class="botao botao-amarelo botao-p" type="submit" title="Renovar prazo"><svg class="ic ic-p"><use href="/img/icones.svg#i-renovar"/></svg>Renovar</button>
+                        </form>
+                        <form th:action="@{/emprestimos/{id}/devolver(id=${e.id})}" method="post">
+                            <button class="botao botao-primario botao-p" type="submit"><svg class="ic ic-p"><use href="/img/icones.svg#i-devolver"/></svg>Devolver</button>
+                        </form>
+                    </div></td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="estado-vazio" th:if="${lista.isEmpty()}">
+            <span class="icone-redondo fundo-verde"><svg class="ic ic-g"><use href="/img/icones.svg#i-check"/></svg></span>
+            <h3 th:text="${aba == 'atrasados'} ? 'Nenhum empréstimo em atraso' : 'Nenhum livro emprestado'">Nada aqui</h3>
+            <p th:text="${aba == 'atrasados'} ? 'Todas as devoluções estão em dia.' : 'Registre um empréstimo para acompanhar prazos e devoluções.'"></p>
+        </div>
+    </section>
+
+    <section class="cartao" th:if="${aba == 'historico'}">
+        <div class="tabela-rolagem" th:if="${paginaHistorico.hasContent()}">
+            <table class="tabela">
+                <thead><tr><th>Leitor</th><th>Livro</th><th>Código</th><th>Retirada</th><th>Devolução</th><th>Situação</th></tr></thead>
+                <tbody>
+                <tr th:each="e : ${paginaHistorico.content}">
+                    <td><a th:href="@{/leitores/{id}(id=${e.leitor.id})}" th:text="${e.leitor.nome}">Nome</a></td>
+                    <td class="forte" th:text="${e.exemplar.livro.titulo}">Livro</td>
+                    <td><span class="selo selo-codigo" th:text="${e.exemplar.codigo}">A-1</span></td>
+                    <td th:text="${#temporals.format(e.dataEmprestimo, 'dd/MM/yyyy')}">01/01/2026</td>
+                    <td th:text="${#temporals.format(e.dataDevolucao, 'dd/MM/yyyy')}">10/01/2026</td>
+                    <td th:replace="~{emprestimos/lista :: situacao(${e})}"></td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="estado-vazio" th:if="${!paginaHistorico.hasContent()}">
+            <span class="icone-redondo fundo-azul"><svg class="ic ic-g"><use href="/img/icones.svg#i-relogio"/></svg></span>
+            <h3>Nenhuma devolução registrada</h3>
+        </div>
+        <nav class="paginacao" th:if="${paginaHistorico.totalPages > 1}">
+            <a class="botao botao-contorno botao-p" th:classappend="${paginaHistorico.first} ? 'desabilitado'" th:href="@{/emprestimos(aba='historico', pagina=${paginaHistorico.number - 1})}">Anterior</a>
+            <span th:text="'Página ' + ${paginaHistorico.number + 1} + ' de ' + ${paginaHistorico.totalPages}"></span>
+            <a class="botao botao-contorno botao-p" th:classappend="${paginaHistorico.last} ? 'desabilitado'" th:href="@{/emprestimos(aba='historico', pagina=${paginaHistorico.number + 1})}">Próxima</a>
+        </nav>
+    </section>
+</th:block>
+
+<td th:fragment="situacao(e)">
+    <th:block th:if="${!e.ativo}">
+        <span class="selo selo-amarelo" th:if="${e.devolvidoComAtraso}" th:text="'Devolvido com ' + ${e.diasAtraso(hoje)} + ' dia(s) de atraso'">Devolvido com atraso</span>
+        <span class="selo selo-verde" th:unless="${e.devolvidoComAtraso}">Devolvido</span>
+    </th:block>
+    <th:block th:if="${e.ativo}" th:with="dias=${e.diasParaVencer(hoje)}">
+        <span class="selo selo-vermelho" th:if="${dias < 0}"><svg class="ic ic-p"><use href="/img/icones.svg#i-alerta"/></svg><th:block th:text="${-dias} + (${dias == -1} ? ' dia' : ' dias') + ' de atraso'">2 dias de atraso</th:block></span>
+        <span class="selo selo-amarelo" th:if="${dias == 0}">Vence hoje</span>
+        <span class="selo selo-amarelo" th:if="${dias > 0 and dias <= 3}" th:text="'Vence em ' + ${dias} + (${dias == 1} ? ' dia' : ' dias')">Vence em 2 dias</span>
+        <span class="selo selo-azul" th:if="${dias > 3}">Emprestado</span>
+    </th:block>
+</td>
+</body>
+</html>

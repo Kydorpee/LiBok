@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org" th:fragment="pagina(titulo, conteudo)">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title th:text="${titulo} + ' · LiBok'">LiBok</title>
+    <link rel="icon" type="image/png" th:href="@{/img/icon.png}">
+    <link rel="stylesheet" th:href="@{/css/libok.css}">
+</head>
+<body>
+<aside class="menu" aria-label="Menu principal">
+    <a class="marca" th:href="@{/painel}">
+        <img th:src="@{/img/icon.png}" alt="">
+        <div>
+            <strong>LiBok</strong>
+            <small th:text="${nomeBiblioteca}">Minha Biblioteca</small>
+        </div>
+    </a>
+    <nav>
+        <a class="menu-item" th:classappend="${secao == 'painel'} ? 'ativo'" th:href="@{/painel}" title="Painel">
+            <svg class="ic"><use href="/img/icones.svg#i-painel"/></svg><span>Painel</span>
+        </a>
+        <a class="menu-item" th:classappend="${secao == 'acervo'} ? 'ativo'" th:href="@{/acervo}" title="Acervo">
+            <svg class="ic"><use href="/img/icones.svg#i-acervo"/></svg><span>Acervo</span>
+        </a>
+        <a class="menu-item" th:classappend="${secao == 'cadastro'} ? 'ativo'" th:href="@{/acervo/novo}" title="Cadastrar livro">
+            <svg class="ic"><use href="/img/icones.svg#i-cadastrar"/></svg><span>Cadastrar livro</span>
+        </a>
+        <a class="menu-item" th:classappend="${secao == 'emprestimos'} ? 'ativo'" th:href="@{/emprestimos}" title="Empréstimos">
+            <svg class="ic"><use href="/img/icones.svg#i-emprestimos"/></svg><span>Empréstimos</span>
+            <em class="contador" th:if="${totalAtrasados > 0}" th:text="${totalAtrasados}"
+                th:title="${totalAtrasados} + ' em atraso'">2</em>
+        </a>
+        <a class="menu-item" th:classappend="${secao == 'leitores'} ? 'ativo'" th:href="@{/leitores}" title="Leitores">
+            <svg class="ic"><use href="/img/icones.svg#i-leitores"/></svg><span>Leitores</span>
+        </a>
+        <a class="menu-item" th:classappend="${secao == 'importacao'} ? 'ativo'" th:href="@{/importacao}" title="Importar e exportar">
+            <svg class="ic"><use href="/img/icones.svg#i-importar"/></svg><span>Importar e exportar</span>
+        </a>
+    </nav>
+    <div class="menu-rodape">
+        <a class="menu-item" th:classappend="${secao == 'configuracoes'} ? 'ativo'" th:href="@{/configuracoes}" title="Configurações">
+            <svg class="ic"><use href="/img/icones.svg#i-configuracoes"/></svg><span>Configurações</span>
+        </a>
+        <div class="menu-versao">LiBok 2.0</div>
+    </div>
+</aside>
+
+<div class="principal">
+    <header class="topo">
+        <h1 th:text="${titulo}">Título</h1>
+        <div class="topo-acoes">
+            <form class="busca-global" th:action="@{/acervo}" method="get" role="search">
+                <svg class="ic ic-p"><use href="/img/icones.svg#i-busca"/></svg>
+                <label class="oculto-visual" for="busca-global">Buscar no acervo</label>
+                <input id="busca-global" name="busca" type="search" placeholder="Buscar livros, autores ou códigos…">
+            </form>
+            <span class="chip-data">
+                <svg class="ic ic-p"><use href="/img/icones.svg#i-calendario"/></svg>
+                <span th:text="${#temporals.format(hoje, 'dd MMM yyyy')}">30 set 2026</span>
+            </span>
+        </div>
+    </header>
+
+    <div class="conteudo">
+        <div class="avisos" th:if="${sucesso != null or erro != null}">
+            <div class="aviso aviso-sucesso" th:if="${sucesso != null}" role="status" data-autofechar>
+                <svg class="ic"><use href="/img/icones.svg#i-check"/></svg>
+                <span th:text="${sucesso}">Tudo certo.</span>
+                <button type="button" aria-label="Fechar aviso" data-fechar-aviso><svg class="ic ic-p"><use href="/img/icones.svg#i-fechar"/></svg></button>
+            </div>
+            <div class="aviso aviso-erro" th:if="${erro != null}" role="alert">
+                <svg class="ic"><use href="/img/icones.svg#i-alerta"/></svg>
+                <span th:text="${erro}">Algo deu errado.</span>
+                <button type="button" aria-label="Fechar aviso" data-fechar-aviso><svg class="ic ic-p"><use href="/img/icones.svg#i-fechar"/></svg></button>
+            </div>
+        </div>
+
+        <th:block th:replace="${conteudo}"></th:block>
+    </div>
+</div>
+
+<dialog class="dialogo" id="dialogo-confirmacao">
+    <div class="dialogo-corpo">
+        <span class="icone-redondo fundo-vermelho"><svg class="ic"><use href="/img/icones.svg#i-alerta"/></svg></span>
+        <div>
+            <h3 id="dialogo-titulo">Confirmar</h3>
+            <p id="dialogo-mensagem"></p>
+        </div>
+    </div>
+    <div class="dialogo-rodape">
+        <button type="button" class="botao botao-contorno" data-dialogo="cancelar">Cancelar</button>
+        <button type="button" class="botao botao-perigo" data-dialogo="confirmar" id="dialogo-botao">Confirmar</button>
+    </div>
+</dialog>
+
+<script th:src="@{/js/libok.js}"></script>
+</body>
+</html>

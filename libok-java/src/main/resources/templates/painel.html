@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org" th:replace="~{layout :: pagina('Painel da biblioteca', ~{::conteudo})}">
+<body>
+<th:block th:fragment="conteudo">
+
+    <section class="saudacao">
+        <div>
+            <h2><th:block th:text="${saudacao}">Boa tarde</th:block>! <span>Veja como está a biblioteca.</span></h2>
+            <p th:text="${nomeBiblioteca} + ' · de ' + ${#temporals.format(dados.inicio, 'dd/MM/yyyy')} + ' a ' + ${#temporals.format(dados.fim, 'dd/MM/yyyy')}">Resumo</p>
+        </div>
+        <form class="filtro-periodo" th:action="@{/painel}" method="get" aria-label="Período do painel">
+            <a th:href="@{/painel(periodo='7')}" th:classappend="${periodo == '7'} ? 'ativo'">7 dias</a>
+            <a th:href="@{/painel(periodo='30')}" th:classappend="${periodo == '30'} ? 'ativo'">30 dias</a>
+            <a th:href="@{/painel(periodo='90')}" th:classappend="${periodo == '90'} ? 'ativo'">90 dias</a>
+            <a th:href="@{/painel(periodo='ano')}" th:classappend="${periodo == 'ano'} ? 'ativo'">Este ano</a>
+            <a th:href="@{/painel(periodo='12m')}" th:classappend="${periodo == '12m'} ? 'ativo'">12 meses</a>
+            <button type="button" class="pilula" th:classappend="${periodo == 'personalizado'} ? 'ativo'" data-abrir-periodo>
+                <svg class="ic ic-p"><use href="/img/icones.svg#i-calendario"/></svg>&nbsp;Personalizado
+            </button>
+            <span class="periodo-personalizado" th:classappend="${periodo == 'personalizado'} ? 'aberto'">
+                <input type="hidden" name="periodo" value="personalizado">
+                <label class="oculto-visual" for="inicio">Início</label>
+                <input class="entrada" type="date" id="inicio" name="inicio" th:value="${dados.inicio}" required>
+                <label class="oculto-visual" for="fim">Fim</label>
+                <input class="entrada" type="date" id="fim" name="fim" th:value="${dados.fim}" required>
+                <button class="botao botao-primario botao-p" type="submit">Aplicar</button>
+            </span>
+        </form>
+    </section>
+
+    <div class="resumo-acervo">
+        <span class="selo selo-verde"><svg class="ic ic-p"><use href="/img/icones.svg#i-livro"/></svg><b th:text="${dados.acervo.titulos}">0</b> títulos</span>
+        <span class="selo selo-azul"><svg class="ic ic-p"><use href="/img/icones.svg#i-acervo"/></svg><b th:text="${dados.acervo.exemplares}">0</b> exemplares</span>
+        <span class="selo selo-verde"><svg class="ic ic-p"><use href="/img/icones.svg#i-check"/></svg><b th:text="${dados.acervo.disponiveis}">0</b> disponíveis</span>
+        <span class="selo selo-amarelo"><svg class="ic ic-p"><use href="/img/icones.svg#i-emprestimos"/></svg><b th:text="${dados.acervo.emprestados}">0</b> emprestados</span>
+    </div>
+
+    <section class="grade-painel" id="painel" th:attr="data-painel=${dadosJson}">
+
+        <div class="area-kpis">
+            <article class="cartao kpi">
+                <div class="kpi-topo"><span class="icone-redondo fundo-verde"><svg class="ic"><use href="/img/icones.svg#i-emprestimos"/></svg></span>Empréstimos</div>
+                <div class="kpi-valor">
+                    <strong th:text="${dados.emprestimos.valor}">0</strong>
+                    <span th:replace="~{painel :: variacao(${dados.emprestimos.variacao})}"></span>
+                </div>
+                <div class="grafico"><canvas data-sparkline="emprestimos" aria-label="Empréstimos por dia no período" role="img"></canvas></div>
+            </article>
+            <article class="cartao kpi">
+                <div class="kpi-topo"><span class="icone-redondo fundo-amarelo"><svg class="ic"><use href="/img/icones.svg#i-leitor-mais"/></svg></span>Novos leitores</div>
+                <div class="kpi-valor">
+                    <strong th:text="${dados.novosLeitores.valor}">0</strong>
+                    <span th:replace="~{painel :: variacao(${dados.novosLeitores.variacao})}"></span>
+                </div>
+                <div class="grafico"><canvas data-sparkline="novosLeitores" aria-label="Novos leitores por dia no período" role="img"></canvas></div>
+            </article>
+            <article class="cartao kpi">
+                <div class="kpi-topo"><span class="icone-redondo fundo-azul"><svg class="ic"><use href="/img/icones.svg#i-leitores"/></svg></span>Leitores ativos</div>
+                <div class="kpi-valor">
+                    <strong th:text="${dados.leitoresAtivos.valor}">0</strong>
+                    <span th:replace="~{painel :: variacao(${dados.leitoresAtivos.variacao})}"></span>
+                </div>
+                <div class="grafico"><canvas data-sparkline="leitoresAtivos" aria-label="Leitores com empréstimo por dia" role="img"></canvas></div>
+            </article>
+            <a class="cartao kpi" th:classappend="${dados.atrasados > 0} ? 'kpi-alerta'" th:href="@{/emprestimos(aba='atrasados')}" style="color: inherit; text-decoration: none">
+                <div class="kpi-topo"><span class="icone-redondo" th:classappend="${dados.atrasados > 0} ? 'fundo-vermelho' : 'fundo-pessego'"><svg class="ic"><use href="/img/icones.svg#i-relogio"/></svg></span>Em atraso</div>
+                <div class="kpi-valor"><strong th:text="${dados.atrasados}">0</strong></div>
+                <div class="kpi-nota" th:text="${dados.vencemEmBreve} + ' vence(m) nos próximos 3 dias'">0 vencem</div>
+            </a>
+        </div>
+
+        <article class="cartao area-barras">
+            <div class="cartao-cabecalho">
+                <h2>Livros mais emprestados</h2>
+                <span class="lado">no período</span>
+            </div>
+            <div class="grafico grafico-barras" th:if="${!dados.maisEmprestados.isEmpty()}">
+                <canvas id="grafico-barras" role="img" aria-label="Livros mais emprestados no período"></canvas>
+            </div>
+            <div class="vazio-grafico" th:if="${dados.maisEmprestados.isEmpty()}">
+                <span class="icone-redondo fundo-verde"><svg class="ic"><use href="/img/icones.svg#i-livro"/></svg></span>
+                Nenhum empréstimo no período.
+                <a class="botao botao-primario botao-p" th:href="@{/emprestimos/novo}">Registrar empréstimo</a>
+            </div>
+        </article>
+
+        <article class="cartao area-leitores">
+            <div class="cartao-cabecalho"><h2>Leitores que mais leram</h2></div>
+            <ol class="ranking" th:if="${!dados.topLeitores.isEmpty()}">
+                <li th:each="item, estado : ${dados.topLeitores}">
+                    <span class="posicao" th:classappend="'posicao-' + ${estado.count}" th:text="${estado.count}">1</span>
+                    <span class="avatar" th:style="'background:' + ${item.cor}" th:text="${item.iniciais}">MS</span>
+                    <a class="nome" th:href="@{/leitores/{id}(id=${item.id})}" th:text="${item.nome}">Nome</a>
+                    <span class="total" th:text="${item.total} + (${item.total == 1} ? ' livro' : ' livros')">3 livros</span>
+                </li>
+            </ol>
+            <div class="vazio-grafico" th:if="${dados.topLeitores.isEmpty()}">
+                <span class="icone-redondo fundo-amarelo"><svg class="ic"><use href="/img/icones.svg#i-leitores"/></svg></span>
+                Os leitores com mais empréstimos aparecem aqui.
+            </div>
+        </article>
+
+        <article class="cartao area-rosca">
+            <div class="cartao-cabecalho"><h2>Acervo por categoria</h2><span class="lado">exemplares</span></div>
+            <div class="rosca-e-legenda" th:if="${!dados.categorias.isEmpty()}">
+                <div class="grafico grafico-rosca"><canvas id="grafico-rosca" role="img" aria-label="Distribuição dos exemplares por categoria"></canvas></div>
+                <ul class="legenda">
+                    <li th:each="fatia : ${dados.categorias}">
+                        <span class="ponto-categoria" th:style="'background:' + ${fatia.cor}"></span>
+                        <span class="nome" th:text="${fatia.nome}">Romance</span>
+                        <span class="valor" th:text="${#numbers.formatDecimal(fatia.percentual, 1, 1)} + '% · ' + ${fatia.total}">45%</span>
+                    </li>
+                </ul>
+            </div>
+            <div class="vazio-grafico" th:if="${dados.categorias.isEmpty()}">
+                <span class="icone-redondo fundo-azul"><svg class="ic"><use href="/img/icones.svg#i-acervo"/></svg></span>
+                Cadastre livros para ver a distribuição.
+                <a class="botao botao-azul botao-p" th:href="@{/acervo/novo}">Cadastrar livro</a>
+            </div>
+        </article>
+
+        <article class="cartao area-tendencia">
+            <div class="cartao-cabecalho">
+                <h2>Empréstimos ao longo do tempo</h2>
+                <span class="lado" th:text="'por ' + ${dados.tendencia.agrupamento}">por dia</span>
+            </div>
+            <div class="grafico grafico-tendencia"><canvas id="grafico-tendencia" role="img" aria-label="Quantidade de empréstimos ao longo do período"></canvas></div>
+        </article>
+    </section>
+
+    <section class="cartao">
+        <div class="cartao-cabecalho">
+            <h2>Próximas devoluções</h2>
+            <div class="lado"><a class="botao botao-contorno botao-p" th:href="@{/emprestimos}">Ver todos os empréstimos</a></div>
+        </div>
+        <div class="tabela-rolagem" th:if="${!proximas.isEmpty()}">
+            <table class="tabela">
+                <thead><tr><th>Leitor</th><th>Livro</th><th>Código</th><th>Devolução</th><th>Situação</th><th class="direita">Ações</th></tr></thead>
+                <tbody>
+                <tr th:each="e : ${proximas}">
+                    <td><div class="celula-leitor"><span class="avatar" th:style="'background:' + ${e.leitor.corAvatar}" th:text="${e.leitor.iniciais}">A</span><a th:href="@{/leitores/{id}(id=${e.leitor.id})}" th:text="${e.leitor.nome}">Nome</a></div></td>
+                    <td class="forte" th:text="${e.exemplar.livro.titulo}">Livro</td>
+                    <td><span class="selo selo-codigo" th:text="${e.exemplar.codigo}">A-1</span></td>
+                    <td th:text="${#temporals.format(e.dataPrevista, 'dd/MM/yyyy')}">01/10/2026</td>
+                    <td th:replace="~{emprestimos/lista :: situacao(${e})}"></td>
+                    <td><div class="acoes">
+                        <form th:action="@{/emprestimos/{id}/devolver(id=${e.id})}" method="post">
+                            <button class="botao botao-primario botao-p" type="submit"><svg class="ic ic-p"><use href="/img/icones.svg#i-devolver"/></svg>Devolver</button>
+                        </form>
+                    </div></td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="estado-vazio" th:if="${proximas.isEmpty()}">
+            <span class="icone-redondo fundo-verde"><svg class="ic ic-g"><use href="/img/icones.svg#i-check"/></svg></span>
+            <p>Nenhum livro emprestado no momento.</p>
+        </div>
+    </section>
+
+    <script th:src="@{/webjars/chart.js/4.5.1/dist/chart.umd.min.js}"></script>
+    <script th:src="@{/js/painel.js}"></script>
+</th:block>
+
+<th:block th:fragment="variacao(valor)">
+    <span class="variacao neutra" th:if="${valor == null}" title="Sem dados no período anterior">—</span>
+    <span class="variacao" th:if="${valor != null}" th:classappend="${valor > 0} ? 'sobe' : (${valor < 0} ? 'desce' : 'neutra')"
+          th:text="(${valor > 0} ? '+' : '') + ${valor} + '%'" title="Em relação ao período anterior">+5%</span>
+</th:block>
+</body>
+</html>

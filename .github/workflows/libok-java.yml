@@ -1,0 +1,52 @@
+name: LiBok Java
+
+on:
+  push:
+    paths: ['libok-java/**', '.github/workflows/libok-java.yml']
+  pull_request:
+    paths: ['libok-java/**', '.github/workflows/libok-java.yml']
+  workflow_dispatch:
+
+jobs:
+  testes:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: libok-java
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+      - run: mvn -B verify
+
+  windows:
+    needs: testes
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: libok-java
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+      - name: Instalar WiX Toolset 3 (para o instalador)
+        run: choco install wixtoolset --version 3.14.1 -y --no-progress
+        continue-on-error: true
+      - name: Empacotar
+        run: |
+          $env:PATH += ";C:\Program Files (x86)\WiX Toolset v3.14\bin"
+          .\empacotar-windows.ps1 -Instalador
+      - uses: actions/upload-artifact@v4
+        with:
+          name: LiBok-windows
+          path: |
+            libok-java/dist/*.zip
+            libok-java/dist/*.exe
+          if-no-files-found: error

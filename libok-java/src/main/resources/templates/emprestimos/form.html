@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org" th:replace="~{layout :: pagina('Novo empréstimo', ~{::conteudo})}">
+<body>
+<th:block th:fragment="conteudo">
+    <a class="voltar" th:href="@{/emprestimos}"><svg class="ic ic-p"><use href="/img/icones.svg#i-anterior"/></svg>Voltar aos empréstimos</a>
+
+    <div class="grade-2">
+        <form class="cartao formulario" th:action="@{/emprestimos}" method="post" th:object="${form}" novalidate>
+            <div class="cartao-cabecalho">
+                <span class="icone-redondo fundo-azul"><svg class="ic"><use href="/img/icones.svg#i-emprestimos"/></svg></span>
+                <h2>Registrar empréstimo</h2>
+            </div>
+
+            <div class="grade-campos">
+                <div class="campo">
+                    <label for="filtro-leitor">Leitor *</label>
+                    <input class="entrada" id="filtro-leitor" type="search" placeholder="Filtrar por nome, matrícula ou turma…" autocomplete="off" data-filtro-leitores th:if="${leitores.size() > 8}">
+                    <select class="entrada" th:field="*{leitorId}" th:errorclass="invalida" size="1" data-lista-leitores>
+                        <option value="">Escolha o leitor</option>
+                        <option th:each="l : ${leitores}" th:value="${l.id}"
+                                th:text="${l.nome} + (${l.resumo.isEmpty()} ? '' : ' — ' + ${l.resumo})"
+                                th:attr="data-busca=${l.nomeNormalizado} + ' ' + ${#strings.toLowerCase(l.resumo)}">Nome</option>
+                    </select>
+                    <span class="erro-campo" th:errors="*{leitorId}"></span>
+                    <span class="dica" th:if="${leitores.isEmpty()}">Nenhum leitor cadastrado. <a th:href="@{/leitores/novo}">Cadastre o primeiro leitor</a>.</span>
+                    <span class="dica" th:unless="${leitores.isEmpty()}">Não encontrou? <a th:href="@{/leitores/novo}">Cadastrar novo leitor</a>.</span>
+                </div>
+                <div class="campo c3">
+                    <label for="codigoExemplar">Código do exemplar *</label>
+                    <input class="entrada" th:field="*{codigoExemplar}" th:errorclass="invalida" list="lista-disponiveis" placeholder="Digite ou leia o código" autocomplete="off">
+                    <datalist id="lista-disponiveis">
+                        <option th:each="ex : ${disponiveis}" th:value="${ex.codigo}" th:text="${ex.livro.titulo}"></option>
+                    </datalist>
+                    <span class="erro-campo" th:errors="*{codigoExemplar}"></span>
+                    <span class="dica" th:text="${disponiveis.size()} + ' exemplar(es) disponível(is)'"></span>
+                </div>
+                <div class="campo c3">
+                    <label for="dataPrevista">Devolução prevista</label>
+                    <input class="entrada" th:field="*{dataPrevista}" type="date" th:attr="min=${hoje}">
+                    <span class="dica">Calculada pelo prazo padrão; pode ser alterada.</span>
+                </div>
+                <div class="campo">
+                    <label for="observacao">Observação</label>
+                    <input class="entrada" th:field="*{observacao}" maxlength="500" placeholder="Opcional">
+                </div>
+            </div>
+
+            <div class="rodape-form">
+                <a class="botao botao-fantasma" th:href="@{/emprestimos}">Cancelar</a>
+                <button class="botao botao-primario" type="submit"><svg class="ic ic-p"><use href="/img/icones.svg#i-check"/></svg>Confirmar empréstimo</button>
+            </div>
+        </form>
+
+        <aside class="cartao">
+            <div class="cartao-cabecalho">
+                <span class="icone-redondo fundo-amarelo"><svg class="ic"><use href="/img/icones.svg#i-info"/></svg></span>
+                <h3>Regras de empréstimo</h3>
+            </div>
+            <ul style="margin: 0; padding-left: 18px; color: var(--texto-2); display: grid; gap: 6px">
+                <li>Só exemplares disponíveis podem ser emprestados.</li>
+                <li>Cada leitor pode ficar com um número limitado de livros ao mesmo tempo.</li>
+                <li>Leitores com livros em atraso podem ser bloqueados até a devolução.</li>
+            </ul>
+            <p style="margin-bottom: 0"><a th:href="@{/configuracoes}">Ajustar prazo e limites nas configurações</a></p>
+        </aside>
+    </div>
+
+    <script>
+      (function () {
+        var filtro = document.querySelector('[data-filtro-leitores]');
+        var lista = document.querySelector('[data-lista-leitores]');
+        if (!filtro || !lista) { return; }
+        function normalizar(texto) { return texto.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase(); }
+        filtro.addEventListener('input', function () {
+          var termo = normalizar(filtro.value.trim());
+          var primeiro = null;
+          Array.from(lista.options).forEach(function (opcao) {
+            if (!opcao.value) { return; }
+            var visivel = !termo || normalizar(opcao.dataset.busca || opcao.text).indexOf(termo) >= 0;
+            opcao.hidden = !visivel;
+            if (visivel && !primeiro) { primeiro = opcao; }
+          });
+          if (termo && primeiro) { lista.value = primeiro.value; }
+        });
+      })();
+    </script>
+</th:block>
+</body>
+</html>

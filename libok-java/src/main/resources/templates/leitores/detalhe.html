@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org" th:replace="~{layout :: pagina('Ficha do leitor', ~{::conteudo})}">
+<body>
+<th:block th:fragment="conteudo" th:with="leitor=${detalhe.leitor}">
+    <a class="voltar" th:href="@{/leitores}"><svg class="ic ic-p"><use href="/img/icones.svg#i-anterior"/></svg>Voltar aos leitores</a>
+
+    <section class="cartao perfil-leitor" style="background: linear-gradient(120deg, #fff 55%, var(--verde-50))">
+        <span class="avatar avatar-g" th:style="'background:' + ${leitor.corAvatar}" th:text="${leitor.iniciais}">MS</span>
+        <div class="dados">
+            <h2 th:text="${leitor.nome}">Nome</h2>
+            <p>
+                <th:block th:if="${leitor.matricula}"><b>Matrícula:</b> <span th:text="${leitor.matricula}"></span> &nbsp;</th:block>
+                <th:block th:if="${leitor.turma}"><b>Turma:</b> <span th:text="${leitor.turma}"></span> &nbsp;</th:block>
+                <th:block th:if="${leitor.telefone}"><b>Telefone:</b> <span th:text="${leitor.telefone}"></span> &nbsp;</th:block>
+                <th:block th:if="${leitor.email}"><b>E-mail:</b> <span th:text="${leitor.email}"></span></th:block>
+            </p>
+            <p th:if="${leitor.observacao}" th:text="${leitor.observacao}" style="white-space: pre-line"></p>
+            <p th:text="'Leitor desde ' + ${#temporals.format(leitor.criadoEm, 'dd/MM/yyyy')}" class="fraco" style="font-size: 13px"></p>
+        </div>
+        <div class="grupo-botoes">
+            <span class="selo selo-cinza" th:unless="${leitor.ativo}">Inativo</span>
+            <a class="botao botao-azul" th:if="${leitor.ativo}" th:href="@{/emprestimos/novo(leitor=${leitor.id})}"><svg class="ic ic-p"><use href="/img/icones.svg#i-emprestimos"/></svg>Emprestar</a>
+            <form th:unless="${leitor.ativo}" th:action="@{/leitores/{id}/reativar(id=${leitor.id})}" method="post">
+                <button class="botao botao-primario" type="submit">Reativar</button>
+            </form>
+            <a class="botao botao-contorno" th:href="@{/leitores/{id}/editar(id=${leitor.id})}"><svg class="ic ic-p"><use href="/img/icones.svg#i-editar"/></svg>Editar</a>
+            <form th:if="${leitor.ativo}" th:action="@{/leitores/{id}/excluir(id=${leitor.id})}" method="post"
+                  data-titulo="Excluir leitor" data-botao="Excluir"
+                  data-confirmar="Excluir este leitor? Se ele já pegou livros, o cadastro será apenas inativado para manter o histórico.">
+                <button class="botao botao-perigo" type="submit"><svg class="ic ic-p"><use href="/img/icones.svg#i-excluir"/></svg>Excluir</button>
+            </form>
+        </div>
+    </section>
+
+    <div class="grade-estatisticas">
+        <div class="estatistica"><span class="icone-redondo fundo-amarelo"><svg class="ic"><use href="/img/icones.svg#i-acervo"/></svg></span>
+            <div><small>Total emprestado</small><strong th:text="${detalhe.totalEmprestimos}">0</strong></div></div>
+        <div class="estatistica"><span class="icone-redondo fundo-azul"><svg class="ic"><use href="/img/icones.svg#i-livro"/></svg></span>
+            <div><small>Livros lidos</small><strong th:text="${detalhe.devolvidos.size()}">0</strong></div></div>
+        <div class="estatistica"><span class="icone-redondo" th:classappend="${detalhe.atrasados > 0} ? 'fundo-vermelho' : 'fundo-pessego'"><svg class="ic"><use href="/img/icones.svg#i-relogio"/></svg></span>
+            <div><small>Em atraso</small><strong th:text="${detalhe.atrasados}">0</strong></div></div>
+        <div class="estatistica"><span class="icone-redondo fundo-verde"><svg class="ic"><use href="/img/icones.svg#i-emprestimos"/></svg></span>
+            <div><small>Com o leitor</small><strong th:text="${detalhe.ativos.size()}">0</strong></div></div>
+    </div>
+
+    <section class="cartao">
+        <div class="cartao-cabecalho"><h2>Empréstimos atuais</h2></div>
+        <div class="grade-emprestimos" th:if="${!detalhe.ativos.isEmpty()}">
+            <article class="cartao-emprestimo" th:each="e : ${detalhe.ativos}" th:classappend="${e.isAtrasado(hoje)} ? 'atrasado'">
+                <div class="capa" th:style="'--cor:' + ${e.exemplar.livro.categoria.cor}" th:text="${e.exemplar.livro.sigla}">AB</div>
+                <div>
+                    <span class="selo selo-codigo" th:text="${e.exemplar.codigo}">A-1</span>
+                    <h4><a style="color: inherit" th:href="@{/acervo/{id}(id=${e.exemplar.livro.id})}" th:text="${e.exemplar.livro.titulo}">Livro</a></h4>
+                    <div class="linhas">
+                        <span>Retirada: <b th:text="${#temporals.format(e.dataEmprestimo, 'dd/MM/yyyy')}"></b></span>
+                        <span>Devolução: <b th:text="${#temporals.format(e.dataPrevista, 'dd/MM/yyyy')}"></b></span>
+                    </div>
+                </div>
+                <div class="acoes">
+                    <form th:action="@{/emprestimos/{id}/renovar(id=${e.id})}" method="post" style="flex: 1; display: flex">
+                        <button class="botao botao-amarelo botao-p" type="submit" style="flex: 1">Renovar</button>
+                    </form>
+                    <form th:action="@{/emprestimos/{id}/devolver(id=${e.id})}" method="post" style="flex: 1; display: flex">
+                        <button class="botao botao-primario botao-p" type="submit" style="flex: 1">Devolver</button>
+                    </form>
+                </div>
+            </article>
+        </div>
+        <div class="estado-vazio" th:if="${detalhe.ativos.isEmpty()}" style="padding: 24px">
+            <p>Nenhum livro com este leitor no momento.</p>
+        </div>
+    </section>
+
+    <section class="cartao">
+        <div class="cartao-cabecalho"><h2>Histórico de leituras</h2></div>
+        <div class="tabela-rolagem" th:if="${!detalhe.devolvidos.isEmpty()}">
+            <table class="tabela">
+                <thead><tr><th>Livro</th><th>Código</th><th>Retirada</th><th>Devolução</th><th>Situação</th></tr></thead>
+                <tbody>
+                <tr th:each="e : ${detalhe.devolvidos}">
+                    <td class="forte"><a style="color: inherit" th:href="@{/acervo/{id}(id=${e.exemplar.livro.id})}" th:text="${e.exemplar.livro.titulo}">Livro</a></td>
+                    <td><span class="selo selo-codigo" th:text="${e.exemplar.codigo}">A-1</span></td>
+                    <td th:text="${#temporals.format(e.dataEmprestimo, 'dd/MM/yyyy')}"></td>
+                    <td th:text="${#temporals.format(e.dataDevolucao, 'dd/MM/yyyy')}"></td>
+                    <td th:replace="~{emprestimos/lista :: situacao(${e})}"></td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="estado-vazio" th:if="${detalhe.devolvidos.isEmpty()}" style="padding: 24px">
+            <p>As leituras concluídas aparecem aqui.</p>
+        </div>
+    </section>
+</th:block>
+</body>
+</html>

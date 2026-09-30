@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Erro · LiBok</title>
+    <link rel="stylesheet" href="/css/libok.css">
+</head>
+<body style="display: flex; align-items: center; justify-content: center; padding: 24px">
+<main class="cartao estado-vazio" style="max-width: 520px">
+    <span class="icone-redondo fundo-vermelho"><svg class="ic ic-g"><use href="/img/icones.svg#i-alerta"/></svg></span>
+    <h3>Algo deu errado</h3>
+    <p th:text="${status == 404} ? 'Página não encontrada.' : 'Ocorreu um erro inesperado. Tente novamente; se continuar, veja o arquivo libok.log na pasta de dados.'">Erro</p>
+    <a class="botao botao-primario" href="/painel">Voltar ao painel</a>
+</main>
+</body>
+</html>

@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout :: pagina(${livroId == null} ? 'Cadastrar livro' : 'Editar livro', ~{::conteudo})}">
+<body>
+<th:block th:fragment="conteudo">
+    <a class="voltar" th:if="${livroId != null}" th:href="@{/acervo/{id}(id=${livroId})}">
+        <svg class="ic ic-p"><use href="/img/icones.svg#i-anterior"/></svg><span th:text="${tituloOriginal}">Voltar</span>
+    </a>
+
+    <div class="grade-2">
+        <form class="cartao formulario" method="post" th:object="${form}"
+              th:action="${livroId == null} ? @{/acervo} : @{/acervo/{id}(id=${livroId})}" id="form-livro" novalidate>
+            <div class="cartao-cabecalho">
+                <span class="icone-redondo fundo-verde"><svg class="ic"><use href="/img/icones.svg#i-cadastrar"/></svg></span>
+                <h2 th:text="${livroId == null} ? 'Dados do livro' : 'Editar dados do livro'">Dados do livro</h2>
+            </div>
+
+            <div class="aviso aviso-erro" th:if="${#fields.hasErrors('*')}" role="alert">
+                <svg class="ic"><use href="/img/icones.svg#i-alerta"/></svg>
+                <span>Confira os campos destacados.</span>
+            </div>
+
+            <div class="grade-campos">
+                <div class="campo c4">
+                    <label for="titulo">Título *</label>
+                    <input class="entrada" th:field="*{titulo}" th:errorclass="invalida" placeholder="Ex.: O Pequeno Príncipe" maxlength="250" autofocus>
+                    <span class="erro-campo" th:errors="*{titulo}"></span>
+                </div>
+                <div class="campo c2">
+                    <label for="autor">Autor *</label>
+                    <input class="entrada" th:field="*{autor}" th:errorclass="invalida" placeholder="Nome do autor" maxlength="200">
+                    <span class="erro-campo" th:errors="*{autor}"></span>
+                </div>
+                <div class="campo c2">
+                    <label for="categoria">Categoria *</label>
+                    <input class="entrada" th:field="*{categoria}" th:errorclass="invalida" list="lista-categorias" placeholder="Ex.: Romance" maxlength="80" autocomplete="off">
+                    <datalist id="lista-categorias"><option th:each="c : ${categorias}" th:value="${c.nome}"></option></datalist>
+                    <span class="dica">Escolha uma existente ou digite uma nova.</span>
+                    <span class="erro-campo" th:errors="*{categoria}"></span>
+                </div>
+                <div class="campo c4">
+                    <label for="assunto">Assunto *</label>
+                    <input class="entrada" th:field="*{assunto}" th:errorclass="invalida" placeholder="Assunto principal" maxlength="200">
+                    <span class="erro-campo" th:errors="*{assunto}"></span>
+                </div>
+                <div class="campo c3">
+                    <label for="isbn">ISBN</label>
+                    <input class="entrada" th:field="*{isbn}" th:errorclass="invalida" placeholder="Opcional" maxlength="20">
+                    <span class="erro-campo" th:errors="*{isbn}"></span>
+                </div>
+                <div class="campo c3">
+                    <label for="anoPublicacao">Ano de publicação</label>
+                    <input class="entrada" th:field="*{anoPublicacao}" th:errorclass="invalida" type="number" min="1000" max="2100" placeholder="Opcional">
+                    <span class="erro-campo" th:errors="*{anoPublicacao}"></span>
+                </div>
+                <div class="campo">
+                    <label for="descricao">Descrição</label>
+                    <textarea class="entrada" th:field="*{descricao}" rows="3" maxlength="2000" placeholder="Sinopse ou observações (opcional)"></textarea>
+                </div>
+            </div>
+
+            <div class="campo" data-exemplares>
+                <div class="exemplares-cabecalho">
+                    <span class="rotulo">Exemplares e códigos de registro *</span>
+                    <label class="oculto-visual" for="quantidade">Quantidade</label>
+                    <input class="entrada" id="quantidade" type="number" min="1" max="500" style="width: 96px; height: 38px" title="Quantidade de exemplares" data-quantidade>
+                    <button type="button" class="botao botao-amarelo botao-p" data-abrir-gerador><svg class="ic ic-p"><use href="/img/icones.svg#i-gerar"/></svg>Gerar códigos</button>
+                    <button type="button" class="botao botao-contorno botao-p" data-adicionar-exemplar><svg class="ic ic-p"><use href="/img/icones.svg#i-mais"/></svg>Exemplar</button>
+                </div>
+                <div class="gerador-codigos" data-gerador>
+                    <div class="campo"><label for="gerador-prefixo">Prefixo</label><input class="entrada" id="gerador-prefixo" placeholder="Ex.: ROM-" data-gerador-prefixo></div>
+                    <div class="campo"><label for="gerador-inicio">Primeiro número</label><input class="entrada" id="gerador-inicio" type="number" min="0" value="1" data-gerador-inicio></div>
+                    <div class="campo"><label for="gerador-digitos">Dígitos</label><input class="entrada" id="gerador-digitos" type="number" min="1" max="8" value="3" data-gerador-digitos></div>
+                    <button type="button" class="botao botao-primario" data-gerar>Preencher</button>
+                </div>
+                <div class="lista-codigos" data-lista-codigos>
+                    <div class="linha-codigo" th:each="exemplar, estado : *{exemplares}">
+                        <span class="numero" th:text="${estado.count}">1</span>
+                        <input type="hidden" th:field="*{exemplares[__${estado.index}__].id}">
+                        <input class="entrada" th:field="*{exemplares[__${estado.index}__].codigo}" placeholder="Código do exemplar" maxlength="50" autocomplete="off">
+                        <button type="button" class="remover" title="Remover exemplar" data-remover-exemplar><svg class="ic ic-p"><use href="/img/icones.svg#i-fechar"/></svg></button>
+                    </div>
+                </div>
+                <span class="dica">Cada exemplar precisa de um código único (sem vírgula ou ponto e vírgula). Leitores de código de barras funcionam aqui.</span>
+            </div>
+
+            <div class="rodape-form">
+                <a class="botao botao-fantasma" th:if="${livroId != null}" th:href="@{/acervo/{id}(id=${livroId})}">Cancelar</a>
+                <button type="reset" class="botao botao-amarelo" th:if="${livroId == null}" data-limpar>Limpar formulário</button>
+                <button type="submit" class="botao botao-primario">
+                    <svg class="ic ic-p"><use href="/img/icones.svg#i-check"/></svg>
+                    <span th:text="${livroId == null} ? 'Cadastrar livro' : 'Salvar alterações'">Cadastrar</span>
+                </button>
+            </div>
+        </form>
+
+        <div class="coluna" th:if="${livroId == null}">
+            <section class="cartao">
+                <div class="cartao-cabecalho">
+                    <span class="icone-redondo fundo-azul"><svg class="ic"><use href="/img/icones.svg#i-importar"/></svg></span>
+                    <h3>Cadastrar por planilha</h3>
+                </div>
+                <p class="cartao-subtitulo" style="margin-top: 0">Envie um CSV no formato do LiBok. Você confere a prévia antes de gravar.</p>
+                <form th:action="@{/importacao/csv}" method="post" enctype="multipart/form-data" class="formulario">
+                    <label class="area-envio">
+                        <input type="file" name="arquivo" accept=".csv,text/csv">
+                        <svg class="ic ic-g"><use href="/img/icones.svg#i-planilha"/></svg>
+                        <strong>Enviar arquivo CSV</strong>
+                        <small>Arraste aqui ou clique para escolher</small>
+                        <span class="nome-arquivo" hidden></span>
+                    </label>
+                    <button class="botao botao-azul botao-bloco" type="submit" data-requer-arquivo disabled>Validar planilha</button>
+                </form>
+            </section>
+            <section class="cartao">
+                <div class="cartao-cabecalho">
+                    <span class="icone-redondo fundo-verde"><svg class="ic"><use href="/img/icones.svg#i-exportar"/></svg></span>
+                    <h3>Exportar acervo</h3>
+                </div>
+                <p class="cartao-subtitulo" style="margin-top: 0">Baixe todos os livros em CSV, pronto para abrir no Excel.</p>
+                <a class="botao botao-primario botao-bloco" th:href="@{/exportar/acervo.csv}">Exportar todos os livros</a>
+            </section>
+            <section class="cartao" th:if="${livroCadastradoId != null}">
+                <div class="cartao-cabecalho">
+                    <span class="icone-redondo fundo-amarelo"><svg class="ic"><use href="/img/icones.svg#i-check"/></svg></span>
+                    <h3>Último cadastro</h3>
+                </div>
+                <div class="grupo-botoes">
+                    <a class="botao botao-contorno botao-p" th:href="@{/acervo/{id}(id=${livroCadastradoId})}">Ver livro</a>
+                    <a class="botao botao-azul botao-p" th:href="@{/emprestimos/novo(livro=${livroCadastradoId})}">Emprestar</a>
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <template id="modelo-linha-codigo">
+        <div class="linha-codigo">
+            <span class="numero"></span>
+            <input type="hidden" data-campo="id">
+            <input class="entrada" data-campo="codigo" placeholder="Código do exemplar" maxlength="50" autocomplete="off">
+            <button type="button" class="remover" title="Remover exemplar" data-remover-exemplar><svg class="ic ic-p"><use href="/img/icones.svg#i-fechar"/></svg></button>
+        </div>
+    </template>
+    <script th:src="@{/js/livro-form.js}"></script>
+</th:block>
+</body>
+</html>
