@@ -60,6 +60,36 @@ Componentes locais com variantes; textos e ícones expostos como propriedades. �
 | Folha de paleta: primitivos | todas as cores da v1, categorias e paleta de novas | [`3:361`](https://www.figma.com/design/VbZ6YOroBB9QfWkppxzkut?node-id=3-361) |
 | Tokens semânticos — Claro / Escuro | todos os tokens `Tema` com hex resolvido por modo | [`3:630`](https://www.figma.com/design/VbZ6YOroBB9QfWkppxzkut?node-id=3-630) / [`3:772`](https://www.figma.com/design/VbZ6YOroBB9QfWkppxzkut?node-id=3-772) |
 
+## Ícone do app (03 Design System)
+
+Seção [`Ícone do app` — `35:391`](https://www.figma.com/design/VbZ6YOroBB9QfWkppxzkut?node-id=35-391), abaixo da Sidebar (x = 0, y = 3600). Substitui o `src-tauri/icons/app-icon-source.png` da v1, mantendo a mesma ideia: livro aberto com uma pena.
+
+| Item | Node | Export em `docs/design/icon/` |
+|---|---|---|
+| `App icon/Completo` (componente, 1024×1024, transparente) | [`35:431`](https://www.figma.com/design/VbZ6YOroBB9QfWkppxzkut?node-id=35-431) | `app-icon-1024.png`, `app-icon-1024.svg` |
+| `App icon/Simplificado` (componente, 1024×1024, para 16/32/48 px) | [`35:430`](https://www.figma.com/design/VbZ6YOroBB9QfWkppxzkut?node-id=35-430) | `app-icon-small-256.png`, `app-icon-small.svg` |
+| `App icon/Antigo (v1)` (só para comparação) | [`35:432`](https://www.figma.com/design/VbZ6YOroBB9QfWkppxzkut?node-id=35-432) | — |
+| Prévias 16/32/48/128/256 px em fundo claro `#F3F3F3` e escuro `#202020`: Antigo, Completo, Simplificado e a combinação recomendada | [`35:13103`](https://www.figma.com/design/VbZ6YOroBB9QfWkppxzkut?node-id=35-13103) | — |
+| Notas de decisão | [`35:13634`](https://www.figma.com/design/VbZ6YOroBB9QfWkppxzkut?node-id=35-13634) | — |
+
+**Decisões:**
+
+- **Área.** O desenho ocupa cerca de 87,5% da largura (64 → 960 px em 1024) e tem margem lateral de 6,25%. Na v1, ocupava uns 60%.
+- **Contraste.**
+  - Contorno `#1B1D33` com 24 px no Completo e 40–44 px no Simplificado.
+  - Capa areia `#F3D38A` e páginas creme `#F6EBCF` (antes eram quase brancas).
+  - Pena coral `#EB9486` + lavanda `#8284BD`, mais larga, com haste e bico escuros.
+- **Fundo transparente, sem placa.** Na barra de tarefas clara, o contorno escuro define a silhueta. Na escura, a capa areia e as páginas creme definem a forma, e o contorno passa a funcionar como desenho interno. As prévias mostram que os dois casos ficam legíveis, então a placa arredondada não foi necessária.
+- **Simplificado.** Não tem as linhas de texto, os filetes da pena, a linha da lombada nem o brilho da haste. Os traços são quase 2× mais grossos, e a pena é mais larga e mais curta.
+- **Uso (para o `libok-tauri-rust`).**
+  - Simplificado em 16, 24, 32 e 48 px: ícone da janela, barra de tarefas e atalho.
+  - Completo de 64 px para cima: 128, 256, instalador, menu Iniciar e `icon.png`.
+  - O `.ico` deve misturar as duas versões. Se a ferramenta só aceitar uma fonte, use o `app-icon-1024.png` (o `tauri icon` gera todos os tamanhos a partir dele), sabendo que em 16/32 px o resultado fica um pouco menos nítido.
+- **Como os PNGs foram exportados.** O export de PNG/SVG do MCP do Figma incluía o fundo do canvas (`#F5F5F5`). Por isso:
+  1. Os SVGs foram exportados do Figma e o retângulo de fundo foi removido.
+  2. Os PNGs foram rasterizados a partir desses SVGs (Chrome headless, fundo transparente).
+  3. Resultado conferido: canto com alfa 0; conteúdo de 64 a 958 px no PNG de 1024 e de 16 a 238 px no de 256.
+
 ## Variáveis
 
 | Coleção | Modos | Conteúdo |

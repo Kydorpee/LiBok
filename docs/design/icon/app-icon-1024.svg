@@ -1,0 +1,22 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g id="app-icon">
+<g id="Group">
+<path id="Vector" d="M108 452H916C937.333 452 948 462.667 948 484V860C948 881.333 937.333 892 916 892H590C570 892 555 898.667 545 912C535 924 524 930 512 930C500 930 489 924 479 912C469 898.667 454 892 434 892H108C86.6667 892 76 881.333 76 860V484C76 462.667 86.6667 452 108 452Z" fill="#F3D38A" stroke="#1B1D33" stroke-width="24" stroke-linejoin="round"/>
+<path id="Vector_2" d="M512 868C430 822 262 812 124 834V492C262 470 430 478 512 522V868Z" fill="#F6EBCF" stroke="#1B1D33" stroke-width="22" stroke-linejoin="round"/>
+<path id="Vector_3" d="M512 868C594 822 762 812 900 834V492C762 470 594 478 512 522V868Z" fill="#F6EBCF" stroke="#1B1D33" stroke-width="22" stroke-linejoin="round"/>
+<path id="Vector_4" d="M150 788C280 770 420 778 492 814" stroke="#C9A85E" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
+<path id="Vector_5" d="M874 788C744 770 604 778 532 814" stroke="#C9A85E" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
+<path id="Vector_6" d="M512 522V868" stroke="#1B1D33" stroke-width="18" stroke-linecap="round" stroke-linejoin="round"/>
+<path id="Vector_7" d="M170 582H380M170 642H420M170 702H340" stroke="#B9BAD9" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
+</g>
+<g id="Group_2">
+<path id="Vector_8" d="M493.094 621.893C495.566 513.755 545.565 329.025 661.096 190.181C726.645 114.002 807.753 85.3401 865.918 89.4444L493.094 621.893Z" fill="#EB9486" stroke="#1B1D33" stroke-width="20" stroke-linejoin="round"/>
+<path id="Vector_9" d="M493.094 621.894C588.953 554.73 741.346 441.697 833.118 310.633C888.837 227.57 889.669 142.698 865.918 89.4447L493.094 621.894Z" fill="#8284BD" stroke="#1B1D33" stroke-width="20" stroke-linejoin="round"/>
+<path id="Vector_10" d="M607.812 433.65L584.886 344.35M682.377 327.16L643.068 226.389M758.58 221.818L725.004 137.268M659.427 408.752L747.906 397.459M739.728 294.071L833.121 286.22" stroke="#F6EBCF" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
+<path id="Vector_11" d="M464.415 662.851L854.447 105.828" stroke="#1B1D33" stroke-width="22" stroke-linecap="round" stroke-linejoin="round"/>
+<path id="Vector_12" d="M516.037 589.127L831.504 138.594" stroke="#F6EBCF" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+<path id="Vector_13" d="M430 712L460.162 606.16L503.418 607.149L519.141 647.457L430 712Z" fill="#4A4C7A" stroke="#1B1D33" stroke-width="18" stroke-linejoin="round"/>
+<path id="Vector_14" d="M438.03 700.532L475.886 646.468" stroke="#F6EBCF" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+</g>
+</g>
+</svg>

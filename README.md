@@ -142,7 +142,15 @@ O `npm run tauri build` gera:
 
 No primeiro build, o Tauri baixa o WiX e o NSIS, então é preciso estar com internet.
 
-Para trocar o ícone, substitua `src-tauri/icons/app-icon-source.png` (PNG quadrado, de preferência com 1024×1024 px e fundo transparente) e rode `npx tauri icon src-tauri/icons/app-icon-source.png -o src-tauri/icons`. Depois apague as pastas `android/` e `ios/` que o comando cria.
+Para trocar o ícone, atualize as fontes em `docs/design/icon/`: `app-icon-1024.png` é a versão completa (1024×1024 px, fundo transparente) e `app-icon-small-256.png` é a versão simplificada, usada em 16 a 48 px. Copie também a versão completa para `src-tauri/icons/app-icon-source.png`. Depois rode, no PowerShell e a partir da raiz:
+
+1. `npx tauri icon docs/design/icon/app-icon-1024.png -o src-tauri/icons`
+2. Apague as pastas `src-tauri/icons/android/` e `src-tauri/icons/ios/` criadas pelo comando.
+3. `powershell -File scripts/make-ico.ps1`: refaz `src-tauri/icons/icon.ico` (16/24/32/48 da simplificada e 64/128/256 da completa), `src-tauri/icons/32x32.png` e `public/favicon.ico`.
+4. `cargo clean -p libok --release` (dentro de `src-tauri`)
+5. `npm run tauri build`
+
+O `cargo clean` é necessário porque o build script não recompila o recurso do Windows quando só o `icon.ico` muda. Sem ele, o `libok.exe` continua com o ícone antigo.
 
 ### Detalhes do Windows
 
