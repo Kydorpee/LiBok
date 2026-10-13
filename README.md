@@ -1,167 +1,177 @@
 # LiBok
 
-Sistema desktop para organização e controle de uma pequena biblioteca.
+O LiBok é um aplicativo para Windows que organiza uma **biblioteca pequena**, como a de uma escola ou de um local de trabalho. Ele substitui a planilha do Excel: você cadastra livros e exemplares, pesquisa o acervo, registra leitores (alunos e professores) e controla os empréstimos. Funciona **offline**, sem servidor, e guarda tudo em um único arquivo no seu computador.
 
-<p align="center">
-	<img src="img/icon.png" alt="Ícone do LiBok" width="180">
-</p>
+Versão atual: **2.0.0**, uma reescrita da v1 (Python/CustomTkinter) com Tauri, React e SQLite.
 
-## Sobre o projeto
+## O que ele faz
 
-O LiBok nasceu de uma necessidade real. Minha esposa precisava organizar a biblioteca do trabalho, que é pequena, mas ainda não possuía um sistema de cadastro. Ela pensou em utilizar uma planilha do Excel e me contou a ideia.
+- **Dashboard:** total de livros (títulos) e de exemplares, gráfico por categoria, últimos livros cadastrados e totais de empréstimos ativos e atrasados.
+- **Acervo:** busca única por título, autor, categoria, assunto ou código de registro (não diferencia maiúsculas nem acentos), filtro por categoria e por disponibilidade, ordenação, edição, exclusão e empréstimo de exemplares.
+- **Cadastro de livro:** título, autor, categoria (com criação rápida), assunto e a lista de códigos de registro dos exemplares. Títulos e códigos repetidos são bloqueados.
+- **Circulação:** turmas (com professor responsável), alunos, professores, empréstimo por exemplar, devolução (com a opção "marcar como lido") e resumo de cada leitor com livros emprestados, atrasos e livros lidos.
+- **Importar/Exportar:** troca de dados do acervo com o Excel por arquivos CSV, com prévia antes de importar e relatório no final.
+- **Configurações:** tema claro, escuro ou do sistema; backup e restauração do banco de dados; categorias e suas cores.
 
-O Excel poderia funcionar, mas pensei que seria possível ajudar a tornar esse controle mais dinâmico, organizado e fácil de consultar. Assim nasceu o LiBok: uma aplicação simples para cadastrar, pesquisar e administrar os livros do acervo.
+## Instalação
 
-## Objetivos
+Na pasta de distribuição há dois instaladores. Use **um** deles:
 
-- Centralizar o cadastro dos livros.
-- Facilitar a consulta por diferentes informações.
-- Controlar a quantidade e os códigos de registro dos exemplares.
-- Evitar o cadastro duplicado do mesmo livro.
-- Exibir um resumo visual das categorias cadastradas.
-- Substituir controles manuais por uma ferramenta mais dinâmica.
+| Arquivo | Quando usar |
+|---|---|
+| `LiBok_2.0.0_x64-setup.exe` (NSIS) | Recomendado. Instala só para o usuário atual e não pede senha de administrador. |
+| `LiBok_2.0.0_x64_pt-BR.msi` (Windows Installer) | Para instalação gerenciada pela TI ou implantação em várias máquinas. |
 
-## Funcionalidades
+Os dois instaladores estão em português. Depois de instalar, abra o **LiBok** pelo Menu Iniciar.
 
-### Dashboard
+O Windows pode exibir o aviso "O Windows protegeu o computador" porque o instalador não tem assinatura digital. Clique em **Mais informações** e depois em **Executar assim mesmo**.
 
-- Exibe o total de livros cadastrados.
-- Apresenta um gráfico de pizza com a quantidade por categoria.
-- Mostra uma legenda com quantidade e percentual de cada categoria.
-- Cria cores automaticamente para categorias novas.
+### WebView2
 
-### Cadastro
+O LiBok usa o **Microsoft Edge WebView2** para desenhar a interface. Ele já vem no Windows 11 e na maioria das instalações atualizadas do Windows 10. Se ele não estiver presente, o instalador baixa e instala o WebView2 automaticamente, e para isso **é preciso estar conectado à internet durante a instalação**. Depois de instalado, o LiBok funciona sem internet.
 
-- Cadastro de nome, autor, categoria, assunto e quantidade.
-- Criação de um campo de código para cada exemplar.
-- Validação dos campos obrigatórios.
-- Validação da quantidade de exemplares e códigos informados.
-- Limpeza automática do formulário após um cadastro realizado.
-- Bloqueio de livros com o mesmo nome, ignorando diferenças de maiúsculas, minúsculas, acentos e espaços externos.
+Em computadores que nunca ficam online, instale antes o "Evergreen Standalone Installer" do WebView2, baixado em outra máquina no site da Microsoft (https://developer.microsoft.com/microsoft-edge/webview2/), e depois rode o instalador do LiBok.
 
-### Pesquisa e gerenciamento
+## Onde ficam os dados
 
-- Pesquisa por nome, autor, categoria, assunto ou código de registro.
-- Busca sem diferenciação de maiúsculas, minúsculas e acentos.
-- Mensagem informando quando nenhum livro é encontrado.
-- Exportação de todo o acervo para CSV compatível com Excel.
-- Edição dos dados cadastrados.
-- Exclusão de livros com confirmação.
+| O quê | Onde |
+|---|---|
+| Banco de dados (todo o acervo, leitores e empréstimos) | `%APPDATA%\com.libok.app\libok.db` |
+| Cópias automáticas feitas antes de restaurar um backup | `%APPDATA%\com.libok.app\backups\libok-pre-restore-AAAAMMDD-HHMMSS.db` |
+| Logs | `%LOCALAPPDATA%\com.libok.app\logs\LiBok.log` |
 
-## Imagens do aplicativo
+Para abrir uma dessas pastas, digite o caminho (por exemplo, `%APPDATA%\com.libok.app`) na barra de endereço do Explorador de Arquivos.
 
-### Identidade visual
+Junto do `libok.db` podem aparecer os arquivos `libok.db-wal` e `libok.db-shm`. Eles fazem parte do banco enquanto o app está aberto. **Não os apague.**
 
-<p align="center">
-	<img src="img/paleta.png" alt="Paleta de cores do LiBok" width="320">
-</p>
+Desinstalar o LiBok não apaga essa pasta, então os dados continuam lá se você reinstalar. A exceção é o desinstalador do `setup.exe`, que oferece a opção de apagar os dados do aplicativo. Ela vem desmarcada; só marque se quiser mesmo perder o banco.
 
-### Telas
+### Backup
 
-As telas principais do LiBok são o Dashboard, a Pesquisa e o Cadastro. O Dashboard apresenta o gráfico de categorias, enquanto a tela de Pesquisa permite consultar, editar, excluir e exportar os livros cadastrados.
+1. Abra **Configurações** e clique em **Fazer backup**.
+2. Escolha onde salvar (o nome sugerido é `libok-backup-<data>.db`). Prefira um pendrive, outra unidade ou uma pasta sincronizada com a nuvem.
 
-## Tecnologias utilizadas
+O backup é um arquivo `.db` único e completo. Ele pode ser feito com o app em uso.
 
-- **Python**: linguagem principal da aplicação.
-- **CustomTkinter**: criação da interface gráfica desktop com widgets modernos.
-- **Tkinter**: recursos nativos da interface, como janelas de confirmação e carregamento de imagem.
-- **SQLite**: banco de dados local, leve e sem necessidade de servidor.
-- **sqlite3**: módulo padrão do Python utilizado para acessar o banco SQLite.
-- **Pillow**: carregamento e exibição otimizada do ícone na tela inicial, quando disponível.
-- **Pathlib**: manipulação dos caminhos de arquivos de forma compatível com o sistema operacional.
+### Restaurar um backup
 
-## Estrutura do projeto
+1. Abra **Configurações** e clique em **Restaurar backup**.
+2. Selecione o arquivo `.db` e confirme.
+
+Antes de substituir os dados, o LiBok verifica se o arquivo é um backup válido e **guarda uma cópia automática do banco atual** em `%APPDATA%\com.libok.app\backups\`. Se você restaurou o arquivo errado, restaure essa cópia `libok-pre-restore-...db` para voltar ao estado anterior.
+
+Um backup gerado por uma versão mais nova do LiBok é recusado.
+
+### Backup manual (alternativa)
+
+Com o LiBok **fechado**, copie o arquivo `libok.db` da pasta de dados para outro lugar. Para restaurar manualmente, feche o app, apague `libok.db-wal` e `libok.db-shm` (se existirem) e coloque a cópia no lugar de `libok.db`.
+
+## Formato do CSV (importar e exportar)
+
+O CSV contém **somente o acervo** (livros e códigos de exemplares). Turmas, leitores e empréstimos não entram no CSV; para eles, use o backup do banco.
+
+- Codificação: **UTF-8 com BOM**, para que o Excel mostre os acentos corretamente.
+- Separador de colunas: **ponto e vírgula (`;`)**.
+- Primeira linha: cabeçalho.
+- Uma linha por livro:
+
+```csv
+titulo;autor;categoria;assunto;codigos
+Dom Casmurro;Machado de Assis;Romance;Literatura brasileira;0001|0002|0003
+O Pequeno Príncipe;Antoine de Saint-Exupéry;Infantil;Fábula;0101
+```
+
+| Coluna | Conteúdo |
+|---|---|
+| `titulo` | Título do livro (obrigatório) |
+| `autor` | Autor (obrigatório) |
+| `categoria` | Nome da categoria (obrigatório). Se ela ainda não existir, é criada na importação. |
+| `assunto` | Assunto (obrigatório) |
+| `codigos` | Códigos de registro dos exemplares, separados por `\|` (pelo menos um). A quantidade de exemplares é o número de códigos. |
+
+Na **importação**:
+
+- Os nomes das colunas não diferenciam maiúsculas nem acentos (`Título` e `titulo` valem igual), e a ordem das colunas não importa.
+- Também são aceitos o CSV exportado pela v1 (`Nome do livro;Autor;Categoria;Assunto;Quantidade;Codigos de registro`, com códigos separados por vírgula) e arquivos salvos pelo Excel em Windows-1252. Se houver a coluna `Quantidade`, ela precisa bater com o número de códigos.
+- Antes de gravar, o app mostra uma prévia com o status de cada linha: **pronta**, **duplicada** (título ou código já cadastrado, ou repetido no próprio arquivo) ou **com erro** (campo obrigatório vazio, sem código, código repetido na linha). Só as linhas prontas são importadas. No final aparece o relatório com o número de livros importados, ignorados por duplicidade e com erro.
+
+Na **exportação**, células que começam com `=`, `+`, `-` ou `@` recebem um apóstrofo (`'`) na frente, para que o Excel não as trate como fórmulas. A importação remove esse apóstrofo.
+
+---
+
+## Para desenvolvedores
+
+### Stack
+
+Tauri v2 (Rust) + React 19 + Vite + TypeScript + Tailwind CSS v4 + SQLite (`rusqlite`, `bundled`). Todo o acesso ao banco acontece no Rust; o frontend chama os commands Tauri por `invoke()`. O escopo, o modelo de dados e o contrato IPC estão em [`docs/BRIEFING.md`](docs/BRIEFING.md).
+
+### Pré-requisitos (Windows)
+
+- **Node.js** 20 ou mais recente, com npm.
+- **Rust** estável, instalado pelo `rustup` com o toolchain `x86_64-pc-windows-msvc`.
+- **Visual Studio Build Tools** com a carga de trabalho "Desenvolvimento para desktop com C++" (MSVC) e o **Windows SDK** (10/11).
+- **WebView2 Runtime** (já vem no Windows 11).
+
+> **Use o PowerShell (ou o Prompt de Comando), não o Git Bash**, para rodar `cargo` e `npm run tauri ...`. No Git Bash, o comando `link` do coreutils aparece antes do `link.exe` do MSVC no `PATH`, e a linkagem do Rust falha.
+
+### Comandos
+
+```powershell
+npm install                 # dependências do frontend e a CLI do Tauri
+npm run tauri dev           # app em modo de desenvolvimento (Vite com hot reload)
+
+# Testes e verificações
+npm test                    # testes do frontend (Vitest)
+npm run lint                # ESLint
+npx tsc                     # checagem de tipos (o tsconfig já usa noEmit)
+cd src-tauri
+cargo test                  # testes do Rust (repositórios e commands, com banco em memória ou temporário)
+cargo clippy -- -D warnings
+cargo fmt --check
+cd ..
+
+# Build de release + instaladores
+npm run tauri build
+```
+
+O `npm run tauri build` gera:
+
+- `src-tauri/target/release/libok.exe` (executável sem instalador)
+- `src-tauri/target/release/bundle/msi/LiBok_2.0.0_x64_pt-BR.msi`
+- `src-tauri/target/release/bundle/nsis/LiBok_2.0.0_x64-setup.exe`
+
+No primeiro build, o Tauri baixa o WiX e o NSIS, então é preciso estar com internet.
+
+Para trocar o ícone, substitua `src-tauri/icons/app-icon-source.png` (PNG quadrado, de preferência com 1024×1024 px e fundo transparente) e rode `npx tauri icon src-tauri/icons/app-icon-source.png -o src-tauri/icons`. Depois apague as pastas `android/` e `ios/` que o comando cria.
+
+### Detalhes do Windows
+
+- `src-tauri/build.rs` embute `src-tauri/windows-app-manifest.xml` (Common Controls v6, DPI PerMonitorV2) pelo linker do MSVC em todos os binários, inclusive nos de `cargo test`. Sem isso, os testes morrem com `STATUS_ENTRYPOINT_NOT_FOUND`.
+- O identificador `com.libok.app` define a pasta de dados (`%APPDATA%\com.libok.app`). **Não o altere**: os usuários perderiam o acesso ao banco existente.
+
+### Estrutura de pastas
 
 ```text
 LiBok/
-├── database/
-│   └── database.py       # Conexão, criação e operações do banco
-├── img/
-│   ├── icon.ico          # Ícone da aplicação
-│   ├── icon.png          # Imagem da tela inicial
-│   └── paleta.png        # Paleta de cores da interface
-├── pages/
-│   ├── dashboard.py      # Dashboard e gráfico de categorias
-│   ├── register.py       # Formulário de cadastro
-│   └── search.py         # Pesquisa, edição e exclusão
-├── index.py              # Inicialização da aplicação e navegação
-├── README.md             # Documentação do projeto
-└── myenv/                # Ambiente virtual local
+├── docs/
+│   ├── BRIEFING.md            # fonte da verdade: escopo, modelo de dados, contrato IPC, fases
+│   ├── design/                # links do Figma e tokens exportados
+│   └── reviews/               # relatórios de revisão
+├── src/                       # frontend React
+│   ├── app/                   # rotas, layout, providers
+│   ├── pages/                 # telas (Dashboard, Acervo, Cadastro, Importar/Exportar, Configurações, Turmas, Leitores, Empréstimos)
+│   ├── features/              # hooks e componentes por domínio
+│   ├── components/ui/         # biblioteca de componentes
+│   ├── lib/                   # wrapper do invoke (api.ts), tipos do contrato (types.ts)
+│   └── styles/                # tokens Tailwind (@theme) e CSS global
+└── src-tauri/                 # backend Rust / Tauri
+    ├── src/commands/          # handlers IPC
+    ├── src/db/                # conexão, migrations, repositórios, normalização, CSV, backup
+    ├── migrations/            # migrations SQL versionadas
+    ├── capabilities/          # permissões do Tauri (menor privilégio)
+    ├── icons/                 # ícones gerados (fonte: app-icon-source.png)
+    ├── tauri.conf.json        # janela, bundle e instaladores
+    └── Cargo.toml
 ```
 
-O arquivo `database/libok.db` é criado automaticamente na primeira execução, caso ainda não exista.
-
-## Como executar
-
-### Pré-requisitos
-
-- Python 3.10 ou superior.
-- Windows, macOS ou Linux com suporte ao Tkinter.
-- Dependências instaladas no ambiente Python.
-
-### Windows com o ambiente virtual do projeto
-
-No PowerShell, na pasta raiz do projeto:
-
-```powershell
-Set-ExecutionPolicy -Scope Process -ExecutionPolicy RemoteSigned
-.\myenv\Scripts\Activate.ps1
-python index.py
-```
-
-Para executar sem ativar o ambiente virtual:
-
-```powershell
-.\myenv\Scripts\python.exe index.py
-```
-
-### Instalação das dependências
-
-Caso seja necessário configurar outro ambiente virtual:
-
-```powershell
-python -m venv myenv
-.\myenv\Scripts\Activate.ps1
-pip install customtkinter pillow
-python index.py
-```
-
-## Gerar aplicativo `.exe`
-
-No Windows, use o ambiente virtual do projeto e instale o PyInstaller:
-
-```powershell
-.\myenv\Scripts\Activate.ps1
-pip install pyinstaller
-```
-
-Depois, na raiz do projeto, gere o executável único:
-
-```powershell
-pyinstaller --noconfirm --clean --onefile --windowed --name LiBok --icon img\icon.ico --add-data "img;img" index.py
-```
-
-O arquivo será criado em `dist\LiBok.exe`. Para usar em outra máquina Windows, copie apenas esse arquivo e abra-o normalmente. O computador de destino não precisa ter Python, CustomTkinter ou Pillow instalados.
-
-Os dados cadastrados pelo executável ficam em `%APPDATA%\LiBok\libok.db`, permitindo que o programa tenha permissão para salvar o acervo e preserve os dados entre execuções.
-
-## Banco de dados
-
-O LiBok utiliza o arquivo local `database/libok.db`. A tabela principal é `books`, com os seguintes dados:
-
-- `name`: nome do livro.
-- `author`: autor.
-- `category`: categoria.
-- `subject`: assunto.
-- `quantity`: quantidade de exemplares.
-- `registration_codes`: códigos de registro dos exemplares.
-
-Não é necessário instalar ou iniciar um servidor de banco de dados.
-
-## Possíveis evoluções
-
-- Relatórios de livros por categoria.
-- Controle de empréstimos e devoluções.
-- Cadastro de usuários da biblioteca.
-- Backup e restauração do banco de dados.
-- Filtros combinados e ordenação dos resultados.
+A v1 em Python está no histórico do git (commit `914c65a`) como referência das regras de negócio.

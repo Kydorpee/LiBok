@@ -1,0 +1,51 @@
+[package]
+name = "libok"
+version = "2.0.0"
+description = "LiBok - gerenciador de biblioteca pequena"
+authors = ["Pedro Costa"]
+edition = "2024"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+# The `_lib` suffix may seem redundant but it is necessary
+# to make the lib name unique and wouldn't conflict with the bin name.
+# This seems to be only an issue on Windows, see https://github.com/rust-lang/cargo/issues/8519
+name = "libok_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[lints.rust]
+# O link.exe em Windows pt-BR imprime "Criando biblioteca ... .dll.lib" ao
+# gerar o cdylib; o rustc só filtra a versão em inglês dessa mensagem e
+# a reporta como aviso. Não indica problema no build.
+linker_messages = "allow"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+rusqlite_migration = "2.6.0"
+rusqlite = { version = "0.40", features = ["bundled", "backup", "functions"] }
+thiserror = "2.0.21"
+chrono = "0.4.45"
+csv = "1.4.0"
+unicode-normalization = "0.1.25"
+tauri-plugin-dialog = "2.8.2"
+# Log em arquivo (app_log_dir) — registra, p.ex., a cópia de segurança do restore_db.
+log = "0.4"
+tauri-plugin-log = "2"
+
+[dev-dependencies]
+# Runtime mock para testar os commands pela IPC (src/commands/tests.rs).
+tauri = { version = "2", features = ["test"] }
+
+# Read the optimization guideline for more details: https://tauri.app/concept/size/#cargo-configuration
+[profile.release]
+codegen-units = 1
+lto = true
+opt-level = 3
+panic = "abort"
+strip = true

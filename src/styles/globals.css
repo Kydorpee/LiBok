@@ -1,0 +1,178 @@
+@import "tailwindcss";
+@import "@fontsource-variable/inter";
+
+/* Gerado a partir de docs/design/tokens.json (color.semantic, radius, font, textStyle, shadow, layout). */
+
+@custom-variant dark (&:where(.dark, .dark *, [data-theme="dark"], [data-theme="dark"] *));
+
+@theme {
+  --font-sans: "Inter Variable", Inter, "Segoe UI", system-ui, sans-serif;
+
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+
+  --shadow-toast: 0 8px 24px rgb(20 20 41 / 0.14);
+  --shadow-modal: 0 16px 48px rgb(13 13 31 / 0.25);
+
+  --spacing-sidebar: 240px;
+  --spacing-header: 80px;
+  --spacing-control: 40px;
+  --spacing-icon-button: 32px;
+  --spacing-row: 60px;
+
+  /* Tema claro (padrão); o escuro sobrescreve abaixo. */
+  --color-bg-app: #F1F1F4;
+  --color-bg-surface: #FFFFFF;
+  --color-bg-subtle: #F7F7F7;
+  --color-bg-hover: #F1F1F4;
+  --color-bg-sidebar: #8284BD;
+  --color-bg-sidebar-active: #FFFFFF;
+  --color-bg-overlay: #2D3047;
+  --color-bg-brand-subtle: #E6E6F5;
+  --color-text-primary: #2D3047;
+  --color-text-muted: #666666;
+  --color-text-on-action: #FFFFFF;
+  --color-text-on-sidebar: #1B1D33;
+  --color-text-on-sidebar-active: #2D3047;
+  --color-text-on-accent: #2D3047;
+  --color-text-link: #5A5C9A;
+  --color-text-danger: #8F3028;
+  --color-text-success: #2D6A4F;
+  --color-text-warning: #7A5C0E;
+  --color-border-default: #DCDCE4;
+  --color-border-strong: #85868F;
+  --color-border-focus: #5A5C9A;
+  --color-border-focus-on-sidebar: #1B1D33;
+  --color-action-primary: #68754F;
+  --color-action-primary-hover: #55613F;
+  --color-action-danger: #B5443A;
+  --color-action-danger-hover: #8F3028;
+  --color-brand-primary: #8284BD;
+  --color-brand-accent: #F3D38A;
+  --color-feedback-danger: #B5443A;
+  --color-feedback-danger-bg: #FBE4E0;
+  --color-feedback-success: #2D6A4F;
+  --color-feedback-success-bg: #DDF1E6;
+  --color-feedback-warning-bg: #FBF1D6;
+}
+
+:root {
+  color-scheme: light;
+}
+
+.dark,
+[data-theme="dark"] {
+  color-scheme: dark;
+  --color-bg-app: #17182A;
+  --color-bg-surface: #22243A;
+  --color-bg-subtle: #2D3047;
+  --color-bg-hover: #2D3047;
+  --color-bg-sidebar: #2D2F52;
+  --color-bg-sidebar-active: #8284BD;
+  --color-bg-overlay: #14152A;
+  --color-bg-brand-subtle: #2D2F52;
+  --color-text-primary: #ECECF4;
+  --color-text-muted: #A9AAB8;
+  --color-text-on-action: #14152A;
+  --color-text-on-sidebar: #ECECF4;
+  --color-text-on-sidebar-active: #14152A;
+  --color-text-link: #B4B6E6;
+  --color-text-danger: #F0907F;
+  --color-text-success: #74C69D;
+  --color-text-warning: #F3D38A;
+  --color-border-default: #3A3D5C;
+  --color-border-strong: #6E7090;
+  --color-border-focus: #B4B6E6;
+  --color-border-focus-on-sidebar: #ECECF4;
+  --color-action-primary: #9AAA74;
+  --color-action-primary-hover: #AEBD88;
+  --color-action-danger: #F0907F;
+  --color-action-danger-hover: #F4A89A;
+  --color-feedback-danger: #F0907F;
+  --color-feedback-danger-bg: #3D1A17;
+  --color-feedback-success: #74C69D;
+  --color-feedback-success-bg: #16302A;
+  --color-feedback-warning-bg: #3A3220;
+}
+
+@utility text-display {
+  font-size: 32px;
+  line-height: 40px;
+  font-weight: 700;
+}
+
+@utility text-title {
+  font-size: 24px;
+  line-height: 32px;
+  font-weight: 600;
+}
+
+@utility text-subtitle {
+  font-size: 18px;
+  line-height: 26px;
+  font-weight: 600;
+}
+
+@utility text-body {
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 400;
+}
+
+@utility text-body-strong {
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 600;
+}
+
+@utility text-label {
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 500;
+}
+
+@utility text-caption {
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 400;
+}
+
+@utility text-stat {
+  font-size: 36px;
+  line-height: 44px;
+  font-weight: 700;
+}
+
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    margin: 0;
+    background-color: var(--color-bg-app);
+    color: var(--color-text-primary);
+    font-family: var(--font-sans);
+    font-size: 14px;
+    line-height: 20px;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-border-focus);
+    outline-offset: 2px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
