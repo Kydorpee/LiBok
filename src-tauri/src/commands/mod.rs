@@ -18,6 +18,7 @@ pub mod classes;
 pub mod files;
 pub mod loans;
 pub mod readers;
+pub mod readings;
 pub mod stats;
 pub mod students;
 pub mod teachers;
@@ -76,6 +77,10 @@ pub fn handler<R: tauri::Runtime>() -> impl Fn(tauri::ipc::Invoke<R>) -> bool + 
         loans::create_loan,
         loans::return_loan,
         loans::list_loans,
+        // leituras coletivas
+        readings::list_class_readings,
+        readings::create_class_reading,
+        readings::delete_class_reading,
     ]
 }
 

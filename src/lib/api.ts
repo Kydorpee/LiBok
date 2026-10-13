@@ -7,6 +7,8 @@ import type {
   BookQuery,
   Category,
   ClassInput,
+  ClassReading,
+  ClassReadingInput,
   ClassQuery,
   ClassRoom,
   CopyStatus,
@@ -111,6 +113,10 @@ export const api = {
   createClass: (input: ClassInput) => call<ClassRoom>("create_class", { input }),
   updateClass: (id: number, input: ClassInput) => call<ClassRoom>("update_class", { id, input }),
   deleteClass: (id: number) => call<void>("delete_class", { id }),
+  // leituras coletivas
+  listClassReadings: (classId: number) => call<ClassReading[]>("list_class_readings", { classId }),
+  createClassReading: (input: ClassReadingInput) => call<ClassReading>("create_class_reading", { input }),
+  deleteClassReading: (id: number) => call<void>("delete_class_reading", { id }),
   // professores
   listTeachers: (text?: string) => call<Teacher[]>("list_teachers", { text }),
   createTeacher: (input: TeacherInput) => call<Teacher>("create_teacher", { input }),

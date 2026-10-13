@@ -68,6 +68,7 @@ const FROM: &str = " FROM students s
 fn select(today: NaiveDate) -> String {
     let today = date_lit(today);
     let read_key = super::loans::READ_KEY;
+    let reading_key = super::readings::READING_KEY;
     let created = super::utc_iso("s.created_at");
     format!(
         "SELECT s.id, s.name, s.registration, s.class_id, c.name, c.teacher_id, t.name,
@@ -75,8 +76,12 @@ fn select(today: NaiveDate) -> String {
             (SELECT COUNT(*) FROM loans l WHERE l.student_id = s.id AND l.returned_at IS NULL),
             (SELECT COUNT(*) FROM loans l WHERE l.student_id = s.id AND l.returned_at IS NULL
                 AND l.due_at < {today}),
-            (SELECT COUNT(DISTINCT {read_key}) FROM loans l WHERE l.student_id = s.id AND l.returned_at IS NOT NULL
-                AND l.marked_read = 1),
+            (SELECT COUNT(*) FROM (
+                SELECT {read_key} AS k FROM loans l WHERE l.student_id = s.id
+                    AND l.returned_at IS NOT NULL AND l.marked_read = 1
+                UNION
+                SELECT {reading_key} FROM class_reading_students crs
+                    JOIN class_readings r ON r.id = crs.reading_id WHERE crs.student_id = s.id)),
             {created}
          {FROM}"
     )

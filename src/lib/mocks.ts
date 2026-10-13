@@ -9,6 +9,8 @@ import type {
   BookQuery,
   Category,
   ClassInput,
+  ClassReading,
+  ClassReadingInput,
   ClassQuery,
   ClassRoom,
   CopyStatus,
@@ -83,6 +85,17 @@ type LoanRow = {
   markedRead: boolean;
 };
 
+type ReadingRow = {
+  id: number;
+  classId: number;
+  bookId: number | null;
+  title: string;
+  author: string;
+  readAt: string;
+  studentIds: number[];
+  createdAt: string;
+};
+
 function fail(code: AppError["code"], message: string, field?: string): never {
   const err: AppError = field ? { code, message, field } : { code, message };
   throw err;
@@ -121,6 +134,7 @@ export function createMockBackend() {
   let classes: ClassRow[] = [];
   let students: StudentRow[] = [];
   let loans: LoanRow[] = [];
+  let readings: ReadingRow[] = [];
 
   // ---------- seed ----------
   const seedCategory = (name: string, color: string) => {
@@ -248,7 +262,10 @@ export function createMockBackend() {
   const classOf = (id: number) => classes.find((c) => c.id === id);
   const teacherOf = (id: number) => teachers.find((t) => t.id === id);
 
-  function loanCounts(pred: (l: LoanRow) => boolean) {
+  const bookKey = (r: { bookId: number | null; title: string }) =>
+    r.bookId !== null ? `id:${r.bookId}` : `t:${normalize(r.title)}`;
+
+  function loanCounts(pred: (l: LoanRow) => boolean, studentId?: number) {
     const t = today();
     let active = 0;
     let overdue = 0;
@@ -256,15 +273,18 @@ export function createMockBackend() {
     for (const l of loans) {
       if (!pred(l)) continue;
       if (l.returnedAt) {
-        if (l.markedRead) readBooks.add(l.bookId !== null ? `id:${l.bookId}` : `t:${normalize(l.title)}`);
+        if (l.markedRead) readBooks.add(bookKey(l));
       } else {
         active++;
         if (l.dueAt < t) overdue++;
       }
     }
+    // leituras coletivas em que o aluno estava presente (livro distinto, sem duplicar)
+    if (studentId !== undefined)
+      for (const r of readings) if (r.studentIds.includes(studentId)) readBooks.add(bookKey(r));
     return { active, overdue, read: readBooks.size };
   }
-  const studentCounts = (id: number) => loanCounts((l) => l.studentId === id);
+  const studentCounts = (id: number) => loanCounts((l) => l.studentId === id, id);
   const teacherCounts = (id: number) => loanCounts((l) => l.teacherId === id);
 
   function toReader(kind: ReaderKind, id: number): Reader {
@@ -378,6 +398,28 @@ export function createMockBackend() {
       status: loanStatus(l, today()),
     };
   }
+
+  function toReading(r: ReadingRow): ClassReading {
+    const c = classOf(r.classId)!;
+    const current = r.bookId !== null ? books.find((b) => b.id === r.bookId) : undefined;
+    const present = r.studentIds
+      .map((id) => students.find((s) => s.id === id))
+      .filter((s): s is StudentRow => !!s)
+      .sort((a, b) => normalize(a.name).localeCompare(normalize(b.name)))
+      .map((s) => ({ id: s.id, name: s.name }));
+    return {
+      id: r.id,
+      classRoom: { id: c.id, name: c.name },
+      book: { id: r.bookId, title: current?.title ?? r.title, author: current?.author ?? r.author },
+      readAt: r.readAt,
+      presentCount: present.length,
+      classSize: students.filter((s) => s.classId === c.id).length,
+      students: present,
+      createdAt: r.createdAt,
+    };
+  }
+  const byRecent = (a: ClassReading, b: ClassReading) =>
+    b.readAt.localeCompare(a.readAt) || b.id - a.id;
 
   const hasActiveLoan = (copyId: number) => loans.some((l) => l.copyId === copyId && !l.returnedAt);
 
@@ -532,6 +574,12 @@ export function createMockBackend() {
         if (l.copyId !== null && ids.includes(l.copyId)) l.copyId = null;
         if (l.bookId === id) l.bookId = null;
       });
+      readings.forEach((r) => {
+        if (r.bookId !== id) return;
+        const b = books.find((x) => x.id === id);
+        if (b) Object.assign(r, { title: b.title, author: b.author });
+        r.bookId = null;
+      });
       copies = copies.filter((c) => c.bookId !== id);
       books = books.filter((b) => b.id !== id);
     },
@@ -662,7 +710,43 @@ export function createMockBackend() {
       if (!classOf(id)) fail("NOT_FOUND", "Turma não encontrada.");
       if (students.some((s) => s.classId === id))
         fail("IN_USE", "Esta turma tem alunos. Mova ou exclua os alunos antes de excluí-la.");
+      readings = readings.filter((r) => r.classId !== id);
       classes = classes.filter((c) => c.id !== id);
+    },
+
+    // leituras coletivas
+    listClassReadings(classId: number): ClassReading[] {
+      if (!classOf(classId)) fail("NOT_FOUND", "Turma não encontrada.");
+      return readings.filter((r) => r.classId === classId).map(toReading).sort(byRecent);
+    },
+    createClassReading(input: ClassReadingInput): ClassReading {
+      if (!classOf(input.classId)) fail("NOT_FOUND", "Turma não encontrada.");
+      if (!isValidISODate(input.readAt ?? "")) fail("VALIDATION", "Informe uma data de leitura válida.", "readAt");
+      const ids = [...new Set(input.studentIds ?? [])];
+      if (ids.length === 0) fail("VALIDATION", "Marque pelo menos um aluno presente.", "studentIds");
+      const inClass = new Set(students.filter((s) => s.classId === input.classId).map((s) => s.id));
+      if (!ids.every((id) => inClass.has(id)))
+        fail("VALIDATION", "Todos os alunos precisam ser da turma.", "studentIds");
+      const book = books.find((b) => b.id === input.bookId);
+      if (!book) fail("NOT_FOUND", "Livro não encontrado.");
+      if (readings.some((r) => r.classId === input.classId && r.bookId === book.id && r.readAt === input.readAt))
+        fail("VALIDATION", "Esta turma já registrou este livro nesta data.", "bookId");
+      const row: ReadingRow = {
+        id: nextId(),
+        classId: input.classId,
+        bookId: book.id,
+        title: book.title,
+        author: book.author,
+        readAt: input.readAt,
+        studentIds: ids,
+        createdAt: now(),
+      };
+      readings.push(row);
+      return toReading(row);
+    },
+    deleteClassReading(id: number): void {
+      if (!readings.some((r) => r.id === id)) fail("NOT_FOUND", "Leitura não encontrada.");
+      readings = readings.filter((r) => r.id !== id);
     },
 
     // professores
@@ -732,6 +816,9 @@ export function createMockBackend() {
       if (loans.some((l) => l.studentId === id && !l.returnedAt))
         fail("HAS_ACTIVE_LOANS", "Este aluno tem empréstimos ativos. Registre as devoluções antes de excluí-lo.");
       loans = loans.filter((l) => l.studentId !== id);
+      readings.forEach((r) => {
+        r.studentIds = r.studentIds.filter((x) => x !== id);
+      });
       students = students.filter((s) => s.id !== id);
     },
 
@@ -766,6 +853,7 @@ export function createMockBackend() {
         teacher: kind === "teacher" ? toTeacher(teacherOf(id)!) : undefined,
         activeLoans,
         history,
+        readings: kind === "student" ? readings.filter((r) => r.studentIds.includes(id)).map(toReading).sort(byRecent) : [],
         counts: { active: counts.active, overdue: counts.overdue, read: counts.read },
       };
     },
@@ -874,6 +962,9 @@ export function createMockBackend() {
     create_class: (a) => m.createClass(a.input as ClassInput),
     update_class: (a) => m.updateClass(a.id as number, a.input as ClassInput),
     delete_class: (a) => m.deleteClass(a.id as number),
+    list_class_readings: (a) => m.listClassReadings(a.classId as number),
+    create_class_reading: (a) => m.createClassReading(a.input as ClassReadingInput),
+    delete_class_reading: (a) => m.deleteClassReading(a.id as number),
     list_teachers: (a) => m.listTeachers(a.text as string | undefined),
     create_teacher: (a) => m.createTeacher(a.input as TeacherInput),
     update_teacher: (a) => m.updateTeacher(a.id as number, a.input as TeacherInput),

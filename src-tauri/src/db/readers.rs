@@ -2,9 +2,10 @@
 
 use super::loans::{self, Loan};
 use super::normalize::{like_tokens, normalize};
+use super::readings;
 use super::students::{self, Student};
 use super::teachers::{self, Teacher};
-use super::types::{Reader, ReaderKind};
+use super::types::{ClassReading, Reader, ReaderKind};
 use super::{Filter, date_lit, text};
 use crate::error::AppResult;
 use chrono::NaiveDate;
@@ -29,6 +30,8 @@ pub struct ReaderSummary {
     pub teacher: Option<Teacher>,
     pub active_loans: Vec<Loan>,
     pub history: Vec<Loan>,
+    /// Leituras coletivas do aluno (vazio para professor).
+    pub readings: Vec<ClassReading>,
     pub counts: SummaryCounts,
 }
 
@@ -173,6 +176,10 @@ pub fn get_reader_summary(
     };
     let active_loans = loans::for_reader(conn, kind, id, false, today)?;
     let history = loans::for_reader(conn, kind, id, true, today)?;
+    let readings = match kind {
+        ReaderKind::Student => readings::list_for_student(conn, id)?,
+        ReaderKind::Teacher => Vec::new(),
+    };
     let counts = SummaryCounts {
         active: reader.active_loans,
         overdue: reader.overdue_loans,
@@ -184,6 +191,7 @@ pub fn get_reader_summary(
         teacher,
         active_loans,
         history,
+        readings,
         counts,
     })
 }

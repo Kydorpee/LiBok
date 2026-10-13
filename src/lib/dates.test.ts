@@ -18,8 +18,8 @@ describe("datas", () => {
     expect(addDays("2026-03-01", -1)).toBe("2026-02-28");
   });
 
-  it("devolução prevista padrão é +14 dias", () => {
-    expect(defaultDueDate("2026-10-12")).toBe("2026-10-26");
+  it("devolução prevista padrão é +7 dias", () => {
+    expect(defaultDueDate("2026-10-12")).toBe("2026-10-19");
   });
 
   it("formata dd/mm/aaaa", () => {

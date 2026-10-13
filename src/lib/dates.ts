@@ -28,9 +28,9 @@ export function addDays(iso: string, days: number): string {
   return toISODate(d);
 }
 
-export const DEFAULT_LOAN_DAYS = 14;
+export const DEFAULT_LOAN_DAYS = 7;
 
-/** Devolução prevista padrão: empréstimo + 14 dias. */
+/** Devolução prevista padrão: empréstimo + 7 dias. */
 export function defaultDueDate(loanedAt: string = todayISO()): string {
   return addDays(loanedAt, DEFAULT_LOAN_DAYS);
 }

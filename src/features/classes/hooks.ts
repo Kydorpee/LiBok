@@ -1,7 +1,7 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../../lib/api";
-import type { ClassInput, ClassQuery } from "../../lib/types";
-import { invalidateAfterClass } from "../invalidate";
+import type { ClassInput, ClassQuery, ClassReadingInput } from "../../lib/types";
+import { invalidateAfterClass, invalidateAfterClassReading } from "../invalidate";
 import { qk } from "../queryKeys";
 
 export const useClasses = (query: ClassQuery = {}) =>
@@ -39,5 +39,28 @@ export function useDeleteClass() {
   return useMutation({
     mutationFn: (id: number) => api.deleteClass(id),
     onSuccess: () => invalidateAfterClass(qc),
+  });
+}
+
+export const useClassReadings = (classId: number | undefined) =>
+  useQuery({
+    queryKey: qk.classReadingList(classId ?? 0),
+    queryFn: () => api.listClassReadings(classId as number),
+    enabled: classId !== undefined && Number.isFinite(classId),
+  });
+
+export function useCreateClassReading() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: ClassReadingInput) => api.createClassReading(input),
+    onSuccess: () => invalidateAfterClassReading(qc),
+  });
+}
+
+export function useDeleteClassReading() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => api.deleteClassReading(id),
+    onSuccess: () => invalidateAfterClassReading(qc),
   });
 }

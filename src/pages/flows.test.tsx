@@ -278,3 +278,58 @@ describe("fluxo: título do documento", () => {
     expect(document.title).toBe("Acervo · LiBok");
   });
 });
+
+describe("fluxo: nova leitura da turma", () => {
+  async function openClass() {
+    resetMock();
+    const year = new Date().getFullYear();
+    const cls = (await api.listClasses({ text: "5º ano A", schoolYear: year }))[0];
+    const view = renderApp(`/turmas/${cls.id}`);
+    await screen.findByRole("heading", { name: "5º ano A" });
+    return { ...view, cls };
+  }
+
+  it("abre com todos marcados, desmarca um ausente e só os presentes ganham a leitura", async () => {
+    const { user, cls } = await openClass();
+    await user.click(await screen.findByRole("button", { name: "Nova leitura" }));
+    const dialog = await screen.findByRole("dialog", { name: "Nova leitura" });
+    expect(within(dialog).getByText("3 de 3 presentes")).toBeInTheDocument();
+    expect(within(dialog).getAllByRole("checkbox").every((c) => (c as HTMLInputElement).checked)).toBe(true);
+
+    await user.type(within(dialog).getByPlaceholderText(/Buscar por título/), "hobbit");
+    await user.click(await within(dialog).findByRole("button", { name: /O Hobbit/ }));
+    await user.click(within(dialog).getByRole("checkbox", { name: "Bruno Henrique Costa" }));
+    expect(within(dialog).getByText("2 de 3 presentes")).toBeInTheDocument();
+    await user.click(within(dialog).getByRole("button", { name: "Registrar leitura" }));
+
+    expect(await screen.findByText("Leitura registrada")).toBeInTheDocument();
+    expect(await screen.findByText("O Hobbit para 2 alunos")).toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Nova leitura" })).not.toBeInTheDocument());
+    expect(await screen.findByText("Presentes 2 de 3")).toBeInTheDocument();
+
+    const { students } = await api.getClass(cls.id);
+    const bruno = students.find((s) => s.name.startsWith("Bruno"))!;
+    const ana = students.find((s) => s.name.startsWith("Ana"))!;
+    expect((await api.getReaderSummary("student", bruno.id)).readings).toHaveLength(0);
+    expect((await api.getReaderSummary("student", ana.id)).readings).toHaveLength(1);
+  });
+
+  it("Desmarcar todos bloqueia o envio", async () => {
+    const { user } = await openClass();
+    await user.click(await screen.findByRole("button", { name: "Nova leitura" }));
+    const dialog = await screen.findByRole("dialog", { name: "Nova leitura" });
+    await user.click(within(dialog).getByRole("button", { name: "Desmarcar todos" }));
+    expect(within(dialog).getByText("0 de 3 presentes")).toBeInTheDocument();
+    expect(within(dialog).getByRole("button", { name: "Registrar leitura" })).toBeDisabled();
+    await user.click(within(dialog).getByRole("button", { name: "Marcar todos" }));
+    expect(within(dialog).getByRole("button", { name: "Registrar leitura" })).toBeEnabled();
+  });
+
+  it("exige o livro", async () => {
+    const { user } = await openClass();
+    await user.click(await screen.findByRole("button", { name: "Nova leitura" }));
+    const dialog = await screen.findByRole("dialog", { name: "Nova leitura" });
+    await user.click(within(dialog).getByRole("button", { name: "Registrar leitura" }));
+    expect(await within(dialog).findByText("Escolha o livro lido.")).toBeInTheDocument();
+  });
+});

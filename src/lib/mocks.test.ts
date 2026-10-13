@@ -7,6 +7,7 @@ import type {
   Book,
   BookInput,
   Category,
+  ClassReading,
   ClassRoom,
   CopyStatus,
   LoanPage,
@@ -178,16 +179,16 @@ describe("mock: circulação", () => {
     const today = todayISO();
     const e = await rejection(
       call("create_loan", {
-        input: { copyId: busy.copyId, readerKind: "student", readerId: students.items[0].id, loanedAt: today, dueAt: addDays(today, 14) },
+        input: { copyId: busy.copyId, readerKind: "student", readerId: students.items[0].id, loanedAt: today, dueAt: addDays(today, 7) },
       }),
     );
     expect(e.code).toBe("COPY_UNAVAILABLE");
 
     const free = st[1];
     const loan = await call<{ status: string; code: string; dueAt: string }>("create_loan", {
-      input: { copyId: free.copyId, readerKind: "student", readerId: students.items[0].id, loanedAt: today, dueAt: addDays(today, 14) },
+      input: { copyId: free.copyId, readerKind: "student", readerId: students.items[0].id, loanedAt: today, dueAt: addDays(today, 7) },
     });
-    expect(loan).toMatchObject({ status: "active", code: "REG-0002", dueAt: addDays(today, 14) });
+    expect(loan).toMatchObject({ status: "active", code: "REG-0002", dueAt: addDays(today, 7) });
     expect((await call<Book>("get_book", { id: b.id })).availableCount).toBe(1);
   });
 
@@ -297,7 +298,7 @@ describe("mock: turmas, professores e alunos", () => {
     const st = await copies(hist.id);
     const today = todayISO();
     await call("create_loan", {
-      input: { copyId: st.find((c) => c.status === "available")!.copyId, readerKind: "teacher", readerId: novo.id, loanedAt: today, dueAt: addDays(today, 14) },
+      input: { copyId: st.find((c) => c.status === "available")!.copyId, readerKind: "teacher", readerId: novo.id, loanedAt: today, dueAt: addDays(today, 7) },
     });
     expect((await rejection(call("delete_teacher", { id: novo.id }))).code).toBe("HAS_ACTIVE_LOANS");
   });
@@ -433,5 +434,85 @@ describe("mock: paridade com o Rust (F-09)", () => {
     await call("return_loan", { id: loan.id, returnedAt: todayISO(), markedRead: true });
     // mesmo livro lido de novo: continua 1
     expect((await call<Student>("get_student", { id: ana.id })).readCount).toBe(1);
+  });
+
+  describe("leituras coletivas", () => {
+    const setup = async () => {
+      const year = new Date().getFullYear();
+      const classes = await call<ClassRoom[]>("list_classes", { query: { text: "5º ano A", schoolYear: year } });
+      const classRoom = classes[0];
+      const { students } = await call<{ classRoom: ClassRoom; students: Student[] }>("get_class", { id: classRoom.id });
+      return { classRoom, students };
+    };
+    const input = (classId: number, bookId: number, studentIds: number[], readAt = todayISO()) => ({
+      input: { classId, bookId, readAt, studentIds },
+    });
+
+    it("conta o livro como lido só para os presentes e lista no resumo", async () => {
+      const { classRoom, students } = await setup();
+      const ana = students.find((s) => s.name.startsWith("Ana"))!;
+      const bruno = students.find((s) => s.name.startsWith("Bruno"))!;
+      const camila = students.find((s) => s.name.startsWith("Camila"))!;
+      const hobbit = await bookByTitle("O Hobbit");
+      const r = await call<ClassReading>("create_class_reading", input(classRoom.id, hobbit.id, [camila.id, ana.id]));
+      expect(r).toMatchObject({ presentCount: 2, classSize: 3 });
+      expect(r.students.map((s) => s.name)).toEqual([ana.name, camila.name]);
+
+      expect((await call<Student>("get_student", { id: bruno.id })).readCount).toBe(0);
+      const sa = await call<ReaderSummary>("get_reader_summary", { kind: "student", id: ana.id });
+      expect(sa.counts.read).toBe(2);
+      expect(sa.readings.map((x) => x.id)).toEqual([r.id]);
+      const sb = await call<ReaderSummary>("get_reader_summary", { kind: "student", id: bruno.id });
+      expect(sb.readings).toEqual([]);
+      expect(await call<ClassReading[]>("list_class_readings", { classId: classRoom.id })).toHaveLength(1);
+    });
+
+    it("não duplica a contagem com empréstimo do mesmo livro lido", async () => {
+      const { classRoom, students } = await setup();
+      const ana = students.find((s) => s.name.startsWith("Ana"))!;
+      expect(ana.readCount).toBe(1); // Pequeno Príncipe devolvido e lido
+      const livro = await bookByTitle("O Pequeno Príncipe");
+      await call("create_class_reading", input(classRoom.id, livro.id, [ana.id]));
+      expect((await call<Student>("get_student", { id: ana.id })).readCount).toBe(1);
+      const outro = await bookByTitle("Dom Casmurro");
+      await call("create_class_reading", input(classRoom.id, outro.id, [ana.id]));
+      expect((await call<Student>("get_student", { id: ana.id })).readCount).toBe(2);
+    });
+
+    it("valida presentes, alunos da turma, livro e duplicata", async () => {
+      const { classRoom, students } = await setup();
+      const hobbit = await bookByTitle("O Hobbit");
+      expect(await rejection(call("create_class_reading", input(classRoom.id, hobbit.id, [])))).toMatchObject({
+        code: "VALIDATION",
+        field: "studentIds",
+      });
+      const outra = (await call<Page<Student>>("list_students", { query: { text: "daniel" } })).items[0];
+      expect(await rejection(call("create_class_reading", input(classRoom.id, hobbit.id, [outra.id])))).toMatchObject({
+        code: "VALIDATION",
+        field: "studentIds",
+      });
+      expect(await rejection(call("create_class_reading", input(classRoom.id, 999999, [students[0].id])))).toMatchObject({
+        code: "NOT_FOUND",
+      });
+      await call("create_class_reading", input(classRoom.id, hobbit.id, [students[0].id]));
+      expect(await rejection(call("create_class_reading", input(classRoom.id, hobbit.id, [students[1].id])))).toMatchObject({
+        code: "VALIDATION",
+        field: "bookId",
+      });
+    });
+
+    it("excluir a leitura desfaz a contagem; livro apagado vira snapshot", async () => {
+      const { classRoom, students } = await setup();
+      const bruno = students.find((s) => s.name.startsWith("Bruno"))!;
+      const hobbit = await bookByTitle("Capitães da Areia");
+      const r = await call<ClassReading>("create_class_reading", input(classRoom.id, hobbit.id, [bruno.id]));
+      await call("delete_book", { id: hobbit.id });
+      const [kept] = await call<ClassReading[]>("list_class_readings", { classId: classRoom.id });
+      expect(kept.book).toEqual({ id: null, title: "Capitães da Areia", author: hobbit.author });
+      expect((await call<Student>("get_student", { id: bruno.id })).readCount).toBe(1);
+      await call("delete_class_reading", { id: r.id });
+      expect((await call<Student>("get_student", { id: bruno.id })).readCount).toBe(0);
+      expect(await rejection(call("delete_class_reading", { id: r.id }))).toMatchObject({ code: "NOT_FOUND" });
+    });
   });
 });

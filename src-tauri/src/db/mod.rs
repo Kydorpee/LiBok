@@ -13,6 +13,7 @@ pub mod csv;
 pub mod loans;
 pub mod normalize;
 pub mod readers;
+pub mod readings;
 pub mod stats;
 pub mod students;
 pub mod teachers;
@@ -27,7 +28,7 @@ use std::path::Path;
 
 /// Versão (`PRAGMA user_version`) do schema produzido pelas migrations atuais.
 /// Deve ser incrementada a cada nova migration.
-pub const SCHEMA_VERSION: i32 = 2;
+pub const SCHEMA_VERSION: i32 = 3;
 
 // Regras para novas migrations (F-16)
 // -----------------------------------
@@ -47,6 +48,7 @@ fn migrations() -> Migrations<'static> {
     Migrations::new(vec![
         M::up(include_str!("../../migrations/0001_init.sql")),
         M::up(include_str!("../../migrations/0002_loan_book_id.sql")),
+        M::up(include_str!("../../migrations/0003_class_readings.sql")),
     ])
 }
 
@@ -383,6 +385,59 @@ mod tests {
             )
             .unwrap();
         assert_eq!(nulls, 2);
+    }
+
+    #[test]
+    fn migration_0003_atualiza_banco_v2_sem_perder_dados() {
+        let mut conn = Connection::open_in_memory().unwrap();
+        conn.pragma_update(None, "foreign_keys", "ON").unwrap();
+        Migrations::new(vec![
+            M::up(include_str!("../../migrations/0001_init.sql")),
+            M::up(include_str!("../../migrations/0002_loan_book_id.sql")),
+        ])
+        .to_latest(&mut conn)
+        .unwrap();
+        conn.execute_batch(
+            "INSERT INTO books (title, title_norm, author, author_norm, subject, subject_norm, category_id)
+               VALUES ('T', 't', 'A', 'a', 'S', 's', 1);
+             INSERT INTO copies (book_id, registration_code) VALUES (1, 'C1');
+             INSERT INTO teachers (name, name_norm) VALUES ('P', 'p');
+             INSERT INTO classes (name, name_norm, school_year, shift, teacher_id)
+               VALUES ('5A', '5a', 2026, 'morning', 1);
+             INSERT INTO students (name, name_norm, registration, class_id)
+               VALUES ('Ana', 'ana', 'M1', 1);
+             INSERT INTO loans (copy_id, student_id, book_id, copy_code, book_title, book_author, book_norm,
+                                loaned_at, due_at, returned_at, marked_read)
+               VALUES (1, 1, 1, 'C1', 'T', 'A', 't a', '2026-10-01', '2026-10-10', '2026-10-05', 1);",
+        )
+        .unwrap();
+        let v: i32 = conn
+            .query_row("PRAGMA user_version", [], |r| r.get(0))
+            .unwrap();
+        assert_eq!(v, 2);
+
+        migrate(&mut conn).unwrap();
+        let v: i32 = conn
+            .query_row("PRAGMA user_version", [], |r| r.get(0))
+            .unwrap();
+        assert_eq!(v, SCHEMA_VERSION);
+        for table in ["students", "loans", "books", "classes"] {
+            let n: i64 = conn
+                .query_row(&format!("SELECT COUNT(*) FROM {table}"), [], |r| r.get(0))
+                .unwrap();
+            assert_eq!(n, 1, "{table} preservada");
+        }
+        let n: i64 = conn
+            .query_row("SELECT COUNT(*) FROM class_readings", [], |r| r.get(0))
+            .unwrap();
+        assert_eq!(n, 0);
+        // o livro lido pelo empréstimo antigo continua contando
+        assert_eq!(
+            crate::db::students::get(&conn, 1, testutil::today())
+                .unwrap()
+                .read_count,
+            1
+        );
     }
 
     #[test]

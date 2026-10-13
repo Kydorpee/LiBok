@@ -414,6 +414,15 @@ pub fn update(conn: &Connection, id: i64, input: &BookInput) -> AppResult<Book> 
             id
         ],
     )?;
+    tx.execute(
+        "UPDATE class_readings SET book_title = ?1, book_author = ?2, book_norm = ?3 WHERE book_id = ?4",
+        params![
+            clean.title,
+            clean.author,
+            normalize(&format!("{} {}", clean.title, clean.author)),
+            id
+        ],
+    )?;
     tx.commit()?;
     get(conn, id)
 }

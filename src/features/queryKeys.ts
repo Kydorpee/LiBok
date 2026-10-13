@@ -12,6 +12,8 @@ export const qk = {
   classes: ["classes"] as const,
   classList: (q: ClassQuery) => ["classes", "list", q] as const,
   classDetail: (id: number) => ["classes", "detail", id] as const,
+  classReadings: ["classReadings"] as const,
+  classReadingList: (classId: number) => ["classReadings", classId] as const,
   teachers: ["teachers"] as const,
   teacherList: (text?: string) => ["teachers", "list", text ?? ""] as const,
   students: ["students"] as const,

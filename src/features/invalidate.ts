@@ -6,7 +6,7 @@ const inv = (qc: QueryClient, keys: readonly (readonly unknown[])[]) =>
 
 /** Livro criado/editado/excluído. */
 export const invalidateAfterBook = (qc: QueryClient) =>
-  inv(qc, [qk.books, qk.categories, qk.stats, qk.copyStatus, qk.loans, qk.readerSummaries]);
+  inv(qc, [qk.books, qk.categories, qk.stats, qk.copyStatus, qk.loans, qk.readerSummaries, qk.classReadings]);
 
 /** Categoria criada/editada. */
 export const invalidateAfterCategory = (qc: QueryClient) => inv(qc, [qk.categories, qk.books, qk.stats]);
@@ -27,7 +27,11 @@ export const invalidateAfterLoan = (qc: QueryClient) =>
 
 /** Turma criada/editada/excluída. */
 export const invalidateAfterClass = (qc: QueryClient) =>
-  inv(qc, [qk.classes, qk.students, qk.teachers, qk.readers, qk.readerSummaries, qk.loans]);
+  inv(qc, [qk.classes, qk.classReadings, qk.students, qk.teachers, qk.readers, qk.readerSummaries, qk.loans]);
+
+/** Leitura coletiva criada/excluída: muda "lidos" dos alunos, a turma e o resumo do leitor. */
+export const invalidateAfterClassReading = (qc: QueryClient) =>
+  inv(qc, [qk.classReadings, qk.classes, qk.students, qk.readers, qk.readerSummaries, qk.stats]);
 
 /** Professor criado/editado/excluído (excluir apaga o histórico dele). */
 export const invalidateAfterTeacher = (qc: QueryClient) =>
@@ -47,6 +51,7 @@ export const invalidateAfterTeacher = (qc: QueryClient) =>
 export const invalidateAfterStudent = (qc: QueryClient) =>
   inv(qc, [
     qk.students,
+    qk.classReadings,
     qk.classes,
     qk.readers,
     qk.readerSummaries,

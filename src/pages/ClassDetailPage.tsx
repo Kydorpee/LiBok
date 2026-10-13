@@ -1,4 +1,4 @@
-import { Eye, Pencil, Presentation, Trash2, UserPlus, Users } from "lucide-react";
+import { BookCheck, BookOpen, Eye, Pencil, Presentation, Trash2, UserPlus, Users } from "lucide-react";
 import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 import { paths } from "../app/paths";
@@ -24,8 +24,16 @@ import {
   useToast,
 } from "../components/ui";
 import { toAppError } from "../lib/api";
-import type { ClassRoom } from "../lib/types";
-import { useClass, useDeleteClass, useUpdateClass } from "../features/classes/hooks";
+import { formatDate } from "../lib/dates";
+import type { ClassReading, ClassRoom } from "../lib/types";
+import {
+  useClass,
+  useClassReadings,
+  useDeleteClass,
+  useDeleteClassReading,
+  useUpdateClass,
+} from "../features/classes/hooks";
+import { ClassReadingModal } from "../features/classes/ClassReadingModal";
 import { ClassModal } from "../features/classes/ClassModal";
 import { SHIFT_LABELS } from "../features/classes/schema";
 import { Page, PageError } from "../features/shared/Page";
@@ -93,6 +101,10 @@ export default function ClassDetailPage() {
   const [editing, setEditing] = useState(false);
   const [swapping, setSwapping] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [reading, setReading] = useState(false);
+  const [deletingReading, setDeletingReading] = useState<ClassReading | null>(null);
+  const readings = useClassReadings(id);
+  const delReading = useDeleteClassReading();
 
   if (q.isError && !q.data) {
     return (
@@ -110,6 +122,17 @@ export default function ClassDetailPage() {
     );
   }
   const { classRoom: c, students } = q.data;
+
+  async function onDeleteReading() {
+    if (!deletingReading) return;
+    try {
+      await delReading.mutateAsync(deletingReading.id);
+      toast.success("Leitura excluída", deletingReading.book.title);
+    } catch (e) {
+      toast.error("Não foi possível excluir a leitura", toAppError(e).message);
+    }
+    setDeletingReading(null);
+  }
 
   async function onDelete() {
     try {
@@ -133,6 +156,14 @@ export default function ClassDetailPage() {
             <UserPlus className="h-4 w-4" aria-hidden="true" />
             Novo aluno
           </Link>
+          <Button
+            icon={<BookCheck />}
+            onClick={() => setReading(true)}
+            disabled={students.length === 0}
+            title={students.length === 0 ? "Cadastre alunos na turma para registrar uma leitura." : undefined}
+          >
+            Nova leitura
+          </Button>
           <Button variant="secondary" icon={<Pencil />} onClick={() => setEditing(true)}>
             Editar turma
           </Button>
@@ -219,6 +250,72 @@ export default function ClassDetailPage() {
         </Table>
       </Card>
 
+      <Card flush>
+        <CardHeader
+          className="px-6 pt-6"
+          title="Leituras da turma"
+          description="Livros lidos em grupo, com os alunos presentes"
+        />
+        <Table caption="Leituras da turma">
+          <TableHead>
+            <TableRow className="h-10 hover:bg-transparent">
+              <TableHeaderCell>Data</TableHeaderCell>
+              <TableHeaderCell>Livro</TableHeaderCell>
+              <TableHeaderCell>Presença</TableHeaderCell>
+              <TableHeaderCell className="text-right">Ações</TableHeaderCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {readings.data?.length ? (
+              readings.data.map((r) => (
+                <TableRow key={r.id}>
+                  <TableCell className="whitespace-nowrap">{formatDate(r.readAt)}</TableCell>
+                  <TableCell>
+                    <p className="text-body-strong">{r.book.title}</p>
+                    <p className="text-caption text-text-muted">{r.book.author}</p>
+                  </TableCell>
+                  <TableCell className="whitespace-nowrap">
+                    Presentes {r.presentCount} de {r.classSize}
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex justify-end">
+                      <IconButton
+                        label={`Excluir leitura de ${r.book.title} em ${formatDate(r.readAt)}`}
+                        onClick={() => setDeletingReading(r)}
+                      >
+                        <Trash2 />
+                      </IconButton>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))
+            ) : (
+              <TableEmpty colSpan={4}>
+                <EmptyState
+                  icon={<BookOpen />}
+                  title="Nenhuma leitura registrada"
+                  message={readings.isError ? "Não foi possível carregar as leituras." : "Use \"Nova leitura\" para registrar um livro lido pela turma."}
+                />
+              </TableEmpty>
+            )}
+          </TableBody>
+        </Table>
+      </Card>
+
+      <ClassReadingModal
+        open={reading}
+        onClose={() => setReading(false)}
+        classId={c.id}
+        students={students.map((s) => ({ id: s.id, name: s.name }))}
+      />
+      <ConfirmDialog
+        open={deletingReading !== null}
+        title="Excluir leitura"
+        message={deletingReading ? `Excluir a leitura de "${deletingReading.book.title}" de ${formatDate(deletingReading.readAt)}? O livro deixa de contar como lido para os alunos que só o leram nela.` : ""}
+        loading={delReading.isPending}
+        onConfirm={onDeleteReading}
+        onCancel={() => setDeletingReading(null)}
+      />
       <ClassModal open={editing} onClose={() => setEditing(false)} classRoom={c} />
       {swapping ? <SwapTeacherModal classRoom={c} onClose={() => setSwapping(false)} /> : null}
       <ConfirmDialog

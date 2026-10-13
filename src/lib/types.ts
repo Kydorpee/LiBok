@@ -165,6 +165,7 @@ export type ReaderSummary = {
   teacher?: Teacher;
   activeLoans: Loan[];
   history: Loan[];
+  readings: ClassReading[];
   counts: { active: number; overdue: number; read: number };
 };
 
@@ -182,4 +183,22 @@ export type CsvPreviewRow = {
 export type CsvPreview = {
   rows: CsvPreviewRow[];
   counts: { ready: number; duplicate: number; error: number };
+};
+
+// Leitura coletiva da turma (§5)
+export type ClassReading = {
+  id: number;
+  classRoom: Ref;
+  book: { id: number | null; title: string; author: string };
+  readAt: string;
+  presentCount: number;
+  classSize: number;
+  students: Ref[];
+  createdAt: string;
+};
+export type ClassReadingInput = {
+  classId: number;
+  bookId: number;
+  readAt: string;
+  studentIds: number[];
 };

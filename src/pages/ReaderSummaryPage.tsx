@@ -60,7 +60,7 @@ export default function ReaderSummaryPage() {
     );
   }
 
-  const { reader, student, teacher, activeLoans, history, counts } = q.data;
+  const { reader, student, teacher, activeLoans, history, readings, counts } = q.data;
   const tab = kind === "student" ? "alunos" : "professores";
   const editPath = kind === "student" ? paths.editStudent(id) : paths.editTeacher(id);
 
@@ -213,6 +213,39 @@ export default function ReaderSummaryPage() {
           </TableBody>
         </Table>
       </Card>
+
+      {kind === "student" ? (
+        <Card flush>
+          <CardHeader className="px-6 pt-6" title="Leituras em turma" description="Livros lidos coletivamente com a turma" />
+          <Table caption="Leituras em turma">
+            <TableHead>
+              <TableRow className="h-10 hover:bg-transparent">
+                <TableHeaderCell>Livro</TableHeaderCell>
+                <TableHeaderCell>Turma</TableHeaderCell>
+                <TableHeaderCell>Data da leitura</TableHeaderCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {readings.length === 0 ? (
+                <TableEmpty colSpan={3}>
+                  <EmptyState title="Sem leituras em turma" message="Nenhuma leitura coletiva registrada para este aluno." />
+                </TableEmpty>
+              ) : (
+                readings.map((r) => (
+                  <TableRow key={r.id}>
+                    <TableCell>
+                      <p className="text-body-strong">{r.book.title}</p>
+                      <p className="text-caption text-text-muted">{r.book.author}</p>
+                    </TableCell>
+                    <TableCell>{r.classRoom.name}</TableCell>
+                    <TableCell className="whitespace-nowrap">{formatDate(r.readAt)}</TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </Card>
+      ) : null}
 
       <LoanModal
         open={lending}

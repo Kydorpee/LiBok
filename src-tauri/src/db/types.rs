@@ -74,3 +74,27 @@ pub struct Reader {
     pub active_loans: i64,
     pub overdue_loans: i64,
 }
+
+/// Leitura coletiva da turma (`ClassReading` do contrato).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ClassReading {
+    pub id: i64,
+    pub class_room: Ref,
+    pub book: super::loans::LoanBook,
+    pub read_at: String,
+    pub present_count: i64,
+    pub class_size: i64,
+    /// Presentes, em ordem alfabética.
+    pub students: Vec<Ref>,
+    pub created_at: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ClassReadingInput {
+    pub class_id: i64,
+    pub book_id: i64,
+    pub read_at: String,
+    pub student_ids: Vec<i64>,
+}

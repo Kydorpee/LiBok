@@ -72,6 +72,12 @@ Telas no Figma: seção "Fase 2" da página `02 Wireframes` (telas 10–19b) e A
 - Lista em cards (busca, filtro por ano letivo e turno, estado vazio); detalhe com professor responsável ("Trocar professor") e tabela de alunos.
 - Nova/editar turma em modal: nome*, ano letivo*, turno* (manhã/tarde/noite/integral), professor* (select com criação rápida). Nome + ano únicos.
 - Excluir turma só se não tiver alunos (`IN_USE`).
+- **Nova leitura** (pedido do usuário em 2026-10-13): no detalhe da turma, o botão "Nova leitura" abre um modal para registrar uma leitura coletiva.
+  - Campos: o livro lido (busca no acervo), a data (hoje, editável) e a lista de alunos da turma com checkbox de presença, **todos marcados por padrão**. É possível desmarcar os ausentes, e há "Marcar todos" / "Desmarcar todos".
+  - Ao salvar, o livro conta como **lido** para cada aluno presente: entra em "livros lidos" e no histórico do Resumo do leitor.
+  - Não usa exemplar nem cria empréstimo.
+  - O detalhe da turma ganha a seção "Leituras da turma" (data, livro, presentes X de Y), com excluir (com confirmação).
+  - Regras: pelo menos 1 aluno presente; todos os alunos precisam ser da turma; a mesma turma não pode registrar o mesmo livro na mesma data duas vezes (`VALIDATION`, `field: "bookId"`).
 
 **Leitores**
 - Abas Alunos | Professores, busca (sem acento), filtro por turma e "só com atraso".
@@ -82,7 +88,7 @@ Telas no Figma: seção "Fase 2" da página `02 Wireframes` (telas 10–19b) e A
 
 **Empréstimos**
 - Empréstimo é **por exemplar (código)** para um aluno **ou** professor. Um exemplar só tem um empréstimo ativo (`COPY_UNAVAILABLE`).
-- Modal "Emprestar exemplar" (a partir do Acervo, da Edição do livro ou do Resumo do leitor): códigos com status, busca de leitor, data do empréstimo (hoje) e devolução prevista (padrão +14 dias, editável).
+- Modal "Emprestar exemplar" (a partir do Acervo, da Edição do livro ou do Resumo do leitor): códigos com status, busca de leitor, data do empréstimo (hoje) e devolução prevista (padrão **+7 dias**, editável; alterado de 14 para 7 a pedido do usuário em 2026-10-13).
 - Lista com abas Ativos (inclui atrasados) / Atrasados / Devolvidos / Todos, busca por livro, código ou leitor, ordenação padrão por "devolver até".
 - Devolução em modal: data (hoje), "Marcar como lido" marcado por padrão.
 - Status calculado (não gravado): Devolvido se `returned_at`; Atrasado se `due_at < hoje`; senão Ativo.
@@ -179,6 +185,25 @@ CREATE INDEX idx_loans_teacher ON loans(teacher_id);
 CREATE INDEX idx_loans_due     ON loans(due_at) WHERE returned_at IS NULL;
 CREATE INDEX idx_students_class ON students(class_id);
 CREATE INDEX idx_loans_book    ON loans(book_id);   -- migration 0002 (book_id + backfill por copies.book_id)
+
+-- Leituras coletivas da turma (migration 0003)
+CREATE TABLE class_readings (
+  id          INTEGER PRIMARY KEY,
+  class_id    INTEGER NOT NULL REFERENCES classes(id) ON DELETE CASCADE,
+  book_id     INTEGER REFERENCES books(id) ON DELETE SET NULL,
+  book_title  TEXT NOT NULL,                 -- snapshot (usado só se o livro for apagado)
+  book_author TEXT NOT NULL,
+  book_norm   TEXT NOT NULL,
+  read_at     TEXT NOT NULL,                 -- 'YYYY-MM-DD' local
+  created_at  TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE UNIQUE INDEX idx_class_readings_unique ON class_readings(class_id, book_id, read_at) WHERE book_id IS NOT NULL;
+CREATE TABLE class_reading_students (
+  reading_id INTEGER NOT NULL REFERENCES class_readings(id) ON DELETE CASCADE,
+  student_id INTEGER NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+  PRIMARY KEY (reading_id, student_id)
+);
+CREATE INDEX idx_crs_student ON class_reading_students(student_id);
 ```
 
 - Bloqueios por regra de negócio (no repositório, antes do SQL): excluir livro, remover/renomear código ou excluir leitor com empréstimo ativo → `HAS_ACTIVE_LOANS`; excluir turma com alunos ou professor responsável por turma → `IN_USE`.
@@ -236,7 +261,13 @@ type LoanInput = { copyId: number; readerKind: ReaderKind; readerId: number; loa
 type LoanQuery = { status?: 'active' | 'overdue' | 'returned' | 'all'; text?: string; classId?: number; readerKind?: ReaderKind; page?: number; pageSize?: number };
 type LoanPage = Page<Loan> & { counts: { active: number; overdue: number; returned: number; all: number } };
 type CopyStatus = { copyId: number; code: string; status: 'available' | 'loaned' | 'overdue'; loan?: { id: number; reader: Reader; dueAt: string } };
-type ReaderSummary = { reader: Reader; student?: Student; teacher?: Teacher; activeLoans: Loan[]; history: Loan[]; counts: { active: number; overdue: number; read: number } };
+type ReaderSummary = { reader: Reader; student?: Student; teacher?: Teacher; activeLoans: Loan[]; history: Loan[]; readings: ClassReading[]; counts: { active: number; overdue: number; read: number } };
+// Leitura coletiva da turma
+type ClassReading = {
+  id: number; classRoom: Ref; book: { id: number | null; title: string; author: string };
+  readAt: string; presentCount: number; classSize: number; students: Ref[]; createdAt: string;
+};
+type ClassReadingInput = { classId: number; bookId: number; readAt: string; studentIds: number[] };
 ```
 
 | Command | Entrada | Saída |
@@ -272,6 +303,9 @@ type ReaderSummary = { reader: Reader; student?: Student; teacher?: Teacher; act
 | `create_loan` | `LoanInput` | `Loan` (`COPY_UNAVAILABLE`) |
 | `return_loan` | `{ id, returnedAt, markedRead }` | `Loan` |
 | `list_loans` | `LoanQuery` | `LoanPage` |
+| `list_class_readings` | `{ classId }` | `ClassReading[]` (mais recente primeiro) |
+| `create_class_reading` | `{ input: ClassReadingInput }` | `ClassReading` |
+| `delete_class_reading` | `{ id }` | `void` |
 
 Erros: todo command retorna `Result<T, AppError>`; o front mostra `message` em toast e destaca `field` no formulário quando houver.
 
@@ -286,7 +320,13 @@ Erros: todo command retorna `Result<T, AppError>`; o front mostra `message` em t
 - `createdAt`/`updatedAt` saem em ISO 8601 UTC com `Z` (`2026-10-12T17:03:00Z`); o front converte para a hora local. Datas de empréstimo continuam `YYYY-MM-DD` locais.
 - `list_loans` sem `status` = `active`. `search_readers` com texto vazio devolve os primeiros `limit` (padrão 20) em ordem alfabética.
 - Busca: texto normalizado com NFKD (sem diacríticos, minúsculo, espaços colapsados), dividido em palavras, todas obrigatórias (AND). Códigos vazios no input são descartados antes da validação.
-- "Livros lidos" = número de **livros distintos** com devolução marcada como lida.
+- "Livros lidos" = número de **livros distintos** lidos pelo leitor: devoluções marcadas como lidas **mais** as leituras coletivas em que o aluno estava presente. Um livro lido das duas formas conta 1. Chave: `book_id`; se o livro tiver sido apagado, usa `book_norm`.
+- Leituras coletivas:
+  - `ClassReading.book` segue a mesma regra do `Loan.book`: dados atuais enquanto o livro existir e snapshot depois que ele for apagado.
+  - `ClassReading.students` são os presentes, em ordem alfabética.
+  - `classSize` é o número atual de alunos da turma.
+  - `ReaderSummary.readings` traz as leituras do aluno, mais recente primeiro. Para professor, a lista vem vazia.
+  - `create_class_reading` valida: `studentIds` não vazio e todos da turma (`VALIDATION`, `field: "studentIds"`); livro inexistente (`NOT_FOUND`); duplicata turma + livro + data (`VALIDATION`, `field: "bookId"`).
 - Antes de `restore_db`, o banco atual é copiado automaticamente para `app_data_dir()/backups/libok-pre-restore-<data-hora>.db`. `export_csv`, `backup_db` e `restore_db` recusam o caminho do banco em uso (`VALIDATION`, `field: "path"`).
 - CSV exportado neutraliza fórmulas: células que começam com `= + - @` (ou tab/CR) recebem `'` na frente.
 

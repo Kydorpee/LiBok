@@ -1,5 +1,5 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { BookUp, CircleAlert, X } from "lucide-react";
+import { BookUp, CircleAlert } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { useQueryClient } from "@tanstack/react-query";
@@ -15,9 +15,10 @@ import {
 } from "../../components/ui";
 import { formatDate } from "../../lib/dates";
 import type { Reader, ReaderKind } from "../../lib/types";
-import { useBooks } from "../books/hooks";
+import { BookPicker } from "../books/BookPicker";
 import { applyAppError } from "../formErrors";
 import { qk } from "../queryKeys";
+import { SelectedChip } from "../shared/SelectedChip";
 import { useReaderSearch } from "../readers/hooks";
 import { useDebounced } from "../useDebounced";
 import { useCopyStatus, useCreateLoan } from "./hooks";
@@ -54,7 +55,6 @@ function LoanModalBody({ onClose, book: bookProp, reader: readerProp }: LoanModa
   const create = useCreateLoan();
 
   const [pickedBook, setPickedBook] = useState<{ id: number; title: string } | null>(null);
-  const [bookText, setBookText] = useState("");
   const [readerText, setReaderText] = useState("");
   const book = bookProp ?? pickedBook;
 
@@ -87,7 +87,6 @@ function LoanModalBody({ onClose, book: bookProp, reader: readerProp }: LoanModa
     }
   }, [copies.data, copyId, firstAvailable, setValue]);
 
-  const bookResults = useBooks({ text: useDebounced(bookText), pageSize: 5 });
   const readerResults = useReaderSearch(useDebounced(readerText), 6);
 
   const nextReturn = allBorrowed
@@ -153,52 +152,14 @@ function LoanModalBody({ onClose, book: bookProp, reader: readerProp }: LoanModa
 
         {/* Livro */}
         {!bookProp ? (
-          <section aria-label="Livro" className="flex flex-col gap-2">
-            {pickedBook ? (
-              <SelectedChip
-                label="Livro"
-                value={pickedBook.title}
-                onClear={() => {
-                  setValue("copyId", undefined as unknown as number);
-                  setPickedBook(null);
-                  setBookText("");
-                }}
-              />
-            ) : (
-              <>
-                <SearchInput
-                  label="Livro"
-                  placeholder="Buscar por título, autor ou código"
-                  value={bookText}
-                  onChange={(e) => setBookText(e.target.value)}
-                  onClear={() => setBookText("")}
-                  data-autofocus
-                />
-                {bookText.trim() ? (
-                  <ul className="flex max-h-40 flex-col overflow-y-auto rounded-sm border border-border-default">
-                    {bookResults.data?.items.length ? (
-                      bookResults.data.items.map((b) => (
-                        <li key={b.id}>
-                          <button
-                            type="button"
-                            onClick={() => setPickedBook({ id: b.id, title: b.title })}
-                            className="flex w-full flex-col px-3 py-2 text-left hover:bg-bg-hover"
-                          >
-                            <span className="text-body-strong">{b.title}</span>
-                            <span className="text-caption text-text-muted">
-                              {b.author} · Disponíveis {b.availableCount} de {b.quantity}
-                            </span>
-                          </button>
-                        </li>
-                      ))
-                    ) : (
-                      <li className="px-3 py-2 text-body text-text-muted">Nenhum livro encontrado.</li>
-                    )}
-                  </ul>
-                ) : null}
-              </>
-            )}
-          </section>
+          <BookPicker
+            value={pickedBook}
+            showAvailability
+            onChange={(b) => {
+              if (!b) setValue("copyId", undefined as unknown as number);
+              setPickedBook(b);
+            }}
+          />
         ) : null}
 
         {/* Exemplares */}
@@ -324,44 +285,12 @@ function LoanModalBody({ onClose, book: bookProp, reader: readerProp }: LoanModa
           <Input
             type="date"
             label="Devolução prevista"
-            help="Padrão: 14 dias."
+            help="Padrão: 7 dias."
             error={errors.dueAt?.message}
             {...register("dueAt")}
           />
         </div>
       </form>
     </Modal>
-  );
-}
-
-function SelectedChip({
-  label,
-  value,
-  badge,
-  onClear,
-}: {
-  label: string;
-  value: string;
-  badge?: React.ReactNode;
-  onClear?: () => void;
-}) {
-  return (
-    <div className="flex flex-col gap-1.5">
-      <span className="text-label text-text-primary">{label}</span>
-      <div className="flex items-center gap-2 rounded-sm border border-border-default bg-bg-subtle px-3 py-2">
-        <span className="text-body-strong">{value}</span>
-        {badge}
-        {onClear ? (
-          <button
-            type="button"
-            aria-label={`Trocar ${label.toLowerCase()}`}
-            onClick={onClear}
-            className="ml-auto inline-flex h-7 w-7 items-center justify-center rounded-sm text-text-muted hover:bg-bg-hover"
-          >
-            <X className="h-4 w-4" aria-hidden="true" />
-          </button>
-        ) : null}
-      </div>
-    </div>
   );
 }

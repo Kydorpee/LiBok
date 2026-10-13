@@ -15,7 +15,7 @@ use tauri::webview::InvokeRequest;
 use tauri::{App, WebviewUrl, WebviewWindow, WebviewWindowBuilder};
 
 /// Todos os commands da tabela do §5.
-const CONTRACT: [&str; 34] = [
+const CONTRACT: [&str; 37] = [
     "list_books",
     "get_book",
     "create_book",
@@ -50,6 +50,9 @@ const CONTRACT: [&str; 34] = [
     "create_loan",
     "return_loan",
     "list_loans",
+    "list_class_readings",
+    "create_class_reading",
+    "delete_class_reading",
 ];
 
 struct Harness {
@@ -583,6 +586,118 @@ fn export_csv_recusa_o_banco_em_uso_mesmo_com_extensao_csv() {
 
     drop(h);
     let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn leitura_coletiva_ponta_a_ponta() {
+    let h = Harness::new();
+    let (_, class_id, joao) = h.school();
+    let ana = h.ok(
+        "create_student",
+        json!({ "input": { "name": "Ana Lima", "registration": "2026002", "classId": class_id } }),
+    )["id"]
+        .as_i64()
+        .expect("id");
+    let ausente = h.ok(
+        "create_student",
+        json!({ "input": { "name": "Bruno Reis", "registration": "2026003", "classId": class_id } }),
+    )["id"]
+        .as_i64()
+        .expect("id");
+    let romance = h.category_id("Romance");
+    let book_id = h.ok(
+        "create_book",
+        json!({ "input": {
+            "title": "Dom Casmurro", "author": "Machado de Assis", "subject": "Romance",
+            "categoryId": romance, "codes": ["A1"]
+        } }),
+    )["id"]
+        .as_i64()
+        .expect("id");
+
+    // presentes: João e Ana; Bruno ausente
+    let input = json!({ "input": {
+        "classId": class_id, "bookId": book_id, "readAt": "2026-10-10",
+        "studentIds": [joao, ana]
+    } });
+    let reading = h.ok("create_class_reading", input.clone());
+    let reading_id = reading["id"].as_i64().expect("id");
+    assert_eq!(reading["classRoom"]["id"], class_id);
+    assert_eq!(reading["classRoom"]["name"], "5º ano A");
+    assert_eq!(reading["book"]["id"], book_id);
+    assert_eq!(reading["book"]["title"], "Dom Casmurro");
+    assert_eq!(reading["readAt"], "2026-10-10");
+    assert_eq!(reading["presentCount"], 2);
+    assert_eq!(reading["classSize"], 3);
+    assert_eq!(reading["students"][0]["name"], "Ana Lima");
+    assert_eq!(reading["students"][1]["name"], "João da Silva");
+    assert!(reading["createdAt"].is_string());
+
+    // duplicata turma + livro + data
+    let dup = h.err("create_class_reading", input);
+    assert_eq!(
+        (dup["code"].clone(), dup["field"].clone()),
+        (json!("VALIDATION"), json!("bookId"))
+    );
+
+    // resumo do presente e do ausente
+    let presente = h.ok(
+        "get_reader_summary",
+        json!({ "kind": "student", "id": joao }),
+    );
+    assert_eq!(presente["counts"]["read"], 1);
+    assert_eq!(presente["readings"].as_array().map(Vec::len), Some(1));
+    assert_eq!(presente["readings"][0]["id"], reading_id);
+    let falta = h.ok(
+        "get_reader_summary",
+        json!({ "kind": "student", "id": ausente }),
+    );
+    assert_eq!(falta["counts"]["read"], 0);
+    assert_eq!(falta["readings"], json!([]));
+
+    // listar por turma
+    let list = h.ok("list_class_readings", json!({ "classId": class_id }));
+    assert_eq!(list.as_array().map(Vec::len), Some(1));
+    assert_eq!(list[0]["id"], reading_id);
+
+    // validações de presença
+    for ids in [json!([]), json!([999])] {
+        let err = h.err(
+            "create_class_reading",
+            json!({ "input": {
+                "classId": class_id, "bookId": book_id, "readAt": "2026-10-11", "studentIds": ids
+            } }),
+        );
+        assert_eq!(err["code"], "VALIDATION", "{err}");
+        assert_eq!(err["field"], "studentIds", "{err}");
+    }
+    let missing_book = h.err(
+        "create_class_reading",
+        json!({ "input": {
+            "classId": class_id, "bookId": 999, "readAt": "2026-10-11", "studentIds": [joao]
+        } }),
+    );
+    assert_eq!(missing_book["code"], "NOT_FOUND");
+
+    // excluir
+    assert_eq!(
+        h.ok("delete_class_reading", json!({ "id": reading_id })),
+        Value::Null
+    );
+    assert_eq!(
+        h.ok("list_class_readings", json!({ "classId": class_id })),
+        json!([])
+    );
+    let depois = h.ok(
+        "get_reader_summary",
+        json!({ "kind": "student", "id": joao }),
+    );
+    assert_eq!(depois["counts"]["read"], 0);
+    assert_eq!(depois["readings"], json!([]));
+    assert_eq!(
+        h.err("delete_class_reading", json!({ "id": reading_id }))["code"],
+        "NOT_FOUND"
+    );
 }
 
 #[test]
