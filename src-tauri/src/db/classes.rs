@@ -202,7 +202,9 @@ pub fn update(
     get(conn, id, today)
 }
 
-/// Exclui a turma; `IN_USE` se houver alunos.
+/// Exclui a turma. Os alunos ficam "Sem turma" (`class_id = NULL`) e as leituras
+/// coletivas são mantidas, guardando o nome da turma (`class_name`). Tudo em
+/// uma transação; não é bloqueado por empréstimos ativos.
 pub fn delete(conn: &Connection, id: i64) -> AppResult<()> {
     let tx = conn.unchecked_transaction()?;
     let exists: bool = tx.query_row(
@@ -213,16 +215,17 @@ pub fn delete(conn: &Connection, id: i64) -> AppResult<()> {
     if !exists {
         return Err(AppError::not_found("Turma não encontrada."));
     }
-    let students: i64 = tx.query_row(
-        "SELECT COUNT(*) FROM students WHERE class_id = ?1",
+    // class_name já é gravado na criação da leitura; isto só corrige o nome se a
+    // turma foi renomeada depois.
+    tx.execute(
+        "UPDATE class_readings SET class_name = (SELECT name FROM classes WHERE id = ?1)
+         WHERE class_id = ?1",
         [id],
-        |r| r.get(0),
     )?;
-    if students > 0 {
-        return Err(AppError::in_use(
-            "Esta turma tem alunos; mova ou exclua os alunos antes de excluir a turma.",
-        ));
-    }
+    tx.execute(
+        "UPDATE students SET class_id = NULL WHERE class_id = ?1",
+        [id],
+    )?;
     tx.execute("DELETE FROM classes WHERE id = ?1", [id])?;
     tx.commit()?;
     Ok(())
@@ -319,12 +322,26 @@ mod tests {
     }
 
     #[test]
-    fn excluir_so_sem_alunos() {
+    fn excluir_deixa_alunos_sem_turma() {
         let conn = db();
-        let (t, c, _) = school(&conn);
-        assert_eq!(delete(&conn, c).unwrap_err().code, ErrorCode::InUse);
+        let (t, c, s) = school(&conn);
+        assert_eq!(delete(&conn, c + 99).unwrap_err().code, ErrorCode::NotFound);
+        delete(&conn, c).unwrap();
+        assert!(
+            crate::db::students::get(&conn, s, today())
+                .unwrap()
+                .class_room
+                .is_none()
+        );
         let c2 = create(&conn, &input("Vazia", 2026, t), today()).unwrap();
         delete(&conn, c2.id).unwrap();
         assert_eq!(delete(&conn, c2.id).unwrap_err().code, ErrorCode::NotFound);
+        // professor segue protegido enquanto tiver turma
+        let c3 = create(&conn, &input("Outra", 2026, t), today()).unwrap();
+        assert_eq!(
+            crate::db::teachers::delete(&conn, t).unwrap_err().code,
+            ErrorCode::InUse
+        );
+        delete(&conn, c3.id).unwrap();
     }
 }

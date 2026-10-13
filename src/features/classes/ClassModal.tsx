@@ -1,13 +1,15 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { UserPlus } from "lucide-react";
+import { Trash2, UserPlus } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
-import { Button, Input, Modal, Select, useToast } from "../../components/ui";
+import { useNavigate } from "react-router";
+import { paths } from "../../app/paths";
+import { Button, ConfirmDialog, Input, Modal, Select, useToast } from "../../components/ui";
 import { toAppError } from "../../lib/api";
 import type { ClassRoom } from "../../lib/types";
 import { applyAppError } from "../formErrors";
 import { useTeachers, useCreateTeacher } from "../teachers/hooks";
-import { useCreateClass, useUpdateClass } from "./hooks";
+import { useCreateClass, useDeleteClass, useUpdateClass } from "./hooks";
 import {
   classSchema,
   classToForm,
@@ -49,6 +51,9 @@ function Body({
   const createTeacher = useCreateTeacher();
   const createClass = useCreateClass();
   const updateClass = useUpdateClass();
+  const deleteClass = useDeleteClass();
+  const navigate = useNavigate();
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const [quick, setQuick] = useState(false);
   const [teacherName, setTeacherName] = useState("");
   const [teacherError, setTeacherError] = useState<string>();
@@ -106,23 +111,54 @@ function Body({
     }
   }
 
+  async function onDelete() {
+    if (!classRoom) return;
+    try {
+      await deleteClass.mutateAsync(classRoom.id);
+      toast.success("Turma excluída", classRoom.name);
+      setConfirmDelete(false);
+      onClose();
+      navigate(paths.classes);
+    } catch (e) {
+      toast.error("Não foi possível excluir a turma", toAppError(e).message);
+      setConfirmDelete(false);
+    }
+  }
+
+  const hasStudents = (classRoom?.studentCount ?? 0) > 0;
   const pending = createClass.isPending || updateClass.isPending;
 
   return (
+    <>
     <Modal
       open
       onClose={onClose}
       title={classRoom ? "Editar turma" : "Nova turma"}
       size="md"
       footer={
-        <>
-          <Button variant="secondary" onClick={onClose}>
-            Cancelar
-          </Button>
-          <Button type="submit" form="class-form" loading={pending}>
-            Salvar turma
-          </Button>
-        </>
+        <div className="flex w-full items-start justify-between gap-4">
+          {classRoom ? (
+            <div className="flex min-w-0 flex-col items-start gap-1">
+              <Button
+                variant="danger"
+                icon={<Trash2 />}
+                onClick={() => setConfirmDelete(true)}
+              >
+                Excluir turma
+              </Button>
+            </div>
+          ) : (
+            <span />
+          )}
+          <div className="flex gap-2">
+            <Button variant="secondary" onClick={onClose}>
+              Cancelar
+            </Button>
+            <Button type="submit" form="class-form" loading={pending}>
+              Salvar turma
+            </Button>
+          </div>
+        </div>
       }
     >
       <form id="class-form" onSubmit={handleSubmit(onSubmit)} noValidate className="flex flex-col gap-4">
@@ -184,5 +220,20 @@ function Body({
         ) : null}
       </form>
     </Modal>
+    {classRoom ? (
+      <ConfirmDialog
+        open={confirmDelete}
+        title="Excluir turma"
+        message={
+          hasStudents
+            ? `Excluir a turma "${classRoom.name}" (${classRoom.schoolYear})? Os ${classRoom.studentCount} alunos ficarão sem turma. O histórico de empréstimos e leituras é mantido.`
+            : `Excluir a turma "${classRoom.name}" (${classRoom.schoolYear})?`
+        }
+        loading={deleteClass.isPending}
+        onConfirm={onDelete}
+        onCancel={() => setConfirmDelete(false)}
+      />
+    ) : null}
+    </>
   );
 }

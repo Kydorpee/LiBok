@@ -14,6 +14,7 @@ import type {
   CopyStatus,
   CsvPreview,
   ImportReport,
+  ImportRow,
   Loan,
   LoanInput,
   LoanPage,
@@ -105,6 +106,8 @@ export const api = {
   exportCsv: (path: string) => call<{ rows: number }>("export_csv", { path }),
   previewCsv: (path: string) => call<CsvPreview>("preview_csv", { path }),
   importCsv: (path: string) => call<ImportReport>("import_csv", { path }),
+  validateImportRows: (rows: ImportRow[]) => call<CsvPreview>("validate_import_rows", { rows }),
+  importRows: (rows: ImportRow[]) => call<ImportReport>("import_rows", { rows }),
   backupDb: (path: string) => call<void>("backup_db", { path }),
   restoreDb: (path: string) => call<void>("restore_db", { path }),
   // turmas

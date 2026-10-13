@@ -1,4 +1,5 @@
-//! Commands de arquivos: `export_csv`, `preview_csv`, `import_csv`, `backup_db`, `restore_db`.
+//! Commands de arquivos: `export_csv`, `preview_csv`, `import_csv`, `backup_db`, `restore_db`,
+//! e da importação revisada no front: `validate_import_rows`, `import_rows`.
 //!
 //! O caminho vem do diálogo nativo aberto pelo front (`tauri-plugin-dialog`),
 //! mas é tratado como entrada não confiável (F-08):
@@ -12,7 +13,7 @@
 //! não ocupar um worker do runtime assíncrono durante importações grandes.
 
 use crate::db::backup;
-use crate::db::csv::{self, CsvPreview, ImportReport};
+use crate::db::csv::{self, CsvPreview, ImportReport, ImportRow};
 use crate::error::{AppError, AppResult};
 use crate::state::DbState;
 use rusqlite::Connection;
@@ -79,6 +80,25 @@ pub async fn preview_csv(state: State<'_, DbState>, path: PathBuf) -> AppResult<
 pub async fn import_csv(state: State<'_, DbState>, path: PathBuf) -> AppResult<ImportReport> {
     require_csv(&path)?;
     with_conn_blocking(&state, move |conn| csv::import(conn, &path)).await
+}
+
+/// Revalida as linhas (possivelmente corrigidas no front) com as mesmas regras
+/// da prévia, inclusive duplicidade entre as próprias linhas. Não grava nada.
+#[tauri::command]
+pub async fn validate_import_rows(
+    state: State<'_, DbState>,
+    rows: Vec<ImportRow>,
+) -> AppResult<CsvPreview> {
+    with_conn_blocking(&state, move |conn| csv::validate_rows(conn, &rows)).await
+}
+
+/// Revalida e grava só as linhas `ready`; as demais vão para o relatório.
+#[tauri::command]
+pub async fn import_rows(
+    state: State<'_, DbState>,
+    rows: Vec<ImportRow>,
+) -> AppResult<ImportReport> {
+    with_conn_blocking(&state, move |conn| csv::import_rows(conn, &rows)).await
 }
 
 #[tauri::command]

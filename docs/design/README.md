@@ -14,7 +14,7 @@ Fonte da verdade visual do LiBok v2. Mantido pelo agente `libok-figma-designer`.
 |---|---|---|
 | `00 Cover` | Capa | [`10:62`](https://www.figma.com/design/VbZ6YOroBB9QfWkppxzkut?node-id=10-62) |
 | `01 Fluxos` | Tabela de transições + link para o diagrama no FigJam | [`10:2`](https://www.figma.com/design/VbZ6YOroBB9QfWkppxzkut?node-id=10-2) |
-| `02 Wireframes` | As telas do §8, frames 1280×800 — linha de cima clara, linha de baixo escura. Abaixo, separada por um divisor e pelo título "Fase 2 — Turmas, Leitores e Empréstimos", a seção Fase 2 (telas 10–19): linha clara em y = 2120 e linha escura em y = 3080 | [`1:3`](https://www.figma.com/design/VbZ6YOroBB9QfWkppxzkut?node-id=1-3) |
+| `02 Wireframes` | As telas do §8, frames 1280×800 — linha de cima clara, linha de baixo escura. Abaixo, separada por um divisor e pelo título "Fase 2 — Turmas, Leitores e Empréstimos", a seção Fase 2 (telas 10–19b, com a Nova leitura em 11–11e): linha clara em y = 2120 e linha escura em y = 3080 | [`1:3`](https://www.figma.com/design/VbZ6YOroBB9QfWkppxzkut?node-id=1-3) |
 | `03 Design System` | Ícones, componentes, folhas de paleta (primitivos + tokens semânticos claro/escuro) | [`1:4`](https://www.figma.com/design/VbZ6YOroBB9QfWkppxzkut?node-id=1-4) |
 | `04 UI` | Reservada para a Fase 1 | [`1:5`](https://www.figma.com/design/VbZ6YOroBB9QfWkppxzkut?node-id=1-5) |
 
@@ -133,22 +133,28 @@ As telas ficam na página `02 Wireframes` (`1:3`), abaixo das linhas do MVP: sep
 |---|---|---|---|
 | 10 | Turmas — lista (cards, busca, filtros ano/turno) | [`22:9`](https://www.figma.com/design/VbZ6YOroBB9QfWkppxzkut?node-id=22-9) | [`29:8720`](https://www.figma.com/design/VbZ6YOroBB9QfWkppxzkut?node-id=29-8720) |
 | 10b | Turmas — estado vazio | [`22:499`](https://www.figma.com/design/VbZ6YOroBB9QfWkppxzkut?node-id=22-499) | [`29:8741`](https://www.figma.com/design/VbZ6YOroBB9QfWkppxzkut?node-id=29-8741) |
-| 11 | Turma — detalhe (professor responsável, Trocar professor, tabela de alunos) | [`23:537`](https://www.figma.com/design/VbZ6YOroBB9QfWkppxzkut?node-id=23-537) | [`29:8752`](https://www.figma.com/design/VbZ6YOroBB9QfWkppxzkut?node-id=29-8752) |
+| 11 | Turma — detalhe (professor responsável, Trocar professor, botão **Nova leitura**, abas Alunos · Leituras da turma, tabela de alunos) — atualizada em 2026-10-13 | [`23:537`](https://www.figma.com/design/VbZ6YOroBB9QfWkppxzkut?node-id=23-537) | [`29:8752`](https://www.figma.com/design/VbZ6YOroBB9QfWkppxzkut?node-id=29-8752) |
+| 11b | Turma — aba **Leituras da turma**: tabela Data · Livro e autor · Presentes ("24 de 26 · 2 ausentes") · Excluir | [`44:13003`](https://www.figma.com/design/VbZ6YOroBB9QfWkppxzkut?node-id=44-13003) | [`47:14933`](https://www.figma.com/design/VbZ6YOroBB9QfWkppxzkut?node-id=47-14933) |
+| 11c | Turma — Leituras da turma, estado vazio (ação "Nova leitura") | [`44:13529`](https://www.figma.com/design/VbZ6YOroBB9QfWkppxzkut?node-id=44-13529) | [`47:14971`](https://www.figma.com/design/VbZ6YOroBB9QfWkppxzkut?node-id=47-14971) |
+| 11d | **Nova leitura** (modal sobre a 11b): busca de livro no acervo, data da leitura (hoje), lista "Alunos presentes" com rolagem (24 de 26, 2 ausentes), Marcar/Desmarcar todos, Registrar leitura | [`45:13306`](https://www.figma.com/design/VbZ6YOroBB9QfWkppxzkut?node-id=45-13306) | [`47:14996`](https://www.figma.com/design/VbZ6YOroBB9QfWkppxzkut?node-id=47-14996) |
+| 11e | Nova leitura — erro: nenhum aluno presente (lista com borda de erro + mensagem, botão desabilitado) | [`45:13584`](https://www.figma.com/design/VbZ6YOroBB9QfWkppxzkut?node-id=45-13584) | [`47:15073`](https://www.figma.com/design/VbZ6YOroBB9QfWkppxzkut?node-id=47-15073) |
 | 12 | Nova turma (modal) com criação rápida de professor | [`23:1041`](https://www.figma.com/design/VbZ6YOroBB9QfWkppxzkut?node-id=23-1041) | [`29:8802`](https://www.figma.com/design/VbZ6YOroBB9QfWkppxzkut?node-id=29-8802) |
+| 12b | **Editar turma** (modal sobre o detalhe da turma 4º ano B, sem alunos): mesmos campos da Nova turma, sem a criação rápida aberta. Rodapé com **Excluir turma** (Perigo, lixeira) à esquerda e Cancelar · Salvar à direita | [`50:15184`](https://www.figma.com/design/VbZ6YOroBB9QfWkppxzkut?node-id=50-15184) | [`50:15586`](https://www.figma.com/design/VbZ6YOroBB9QfWkppxzkut?node-id=50-15586) |
+| 12c | Editar turma — **turma com alunos** (5º ano A, 26 alunos): Excluir turma desabilitado, com a dica "Para excluir, remova ou transfira os alunos da turma." abaixo, à esquerda | [`50:15445`](https://www.figma.com/design/VbZ6YOroBB9QfWkppxzkut?node-id=50-15445) | [`50:15845`](https://www.figma.com/design/VbZ6YOroBB9QfWkppxzkut?node-id=50-15845) |
 | 13 | Leitores — aba Alunos (busca, filtro por turma/situação) | [`24:1299`](https://www.figma.com/design/VbZ6YOroBB9QfWkppxzkut?node-id=24-1299) | [`29:8851`](https://www.figma.com/design/VbZ6YOroBB9QfWkppxzkut?node-id=29-8851) |
 | 13b | Leitores — aba Professores | [`24:1737`](https://www.figma.com/design/VbZ6YOroBB9QfWkppxzkut?node-id=24-1737) | [`29:8895`](https://www.figma.com/design/VbZ6YOroBB9QfWkppxzkut?node-id=29-8895) |
 | 14 | Cadastrar aluno (página) com erro de matrícula duplicada | [`24:2154`](https://www.figma.com/design/VbZ6YOroBB9QfWkppxzkut?node-id=24-2154) | [`29:8932`](https://www.figma.com/design/VbZ6YOroBB9QfWkppxzkut?node-id=29-8932) |
-| 15 | Resumo do aluno (indicadores, empréstimos ativos, histórico/lidos) | [`25:2092`](https://www.figma.com/design/VbZ6YOroBB9QfWkppxzkut?node-id=25-2092) | [`29:8970`](https://www.figma.com/design/VbZ6YOroBB9QfWkppxzkut?node-id=29-8970) |
+| 15 | Resumo do aluno (indicadores, empréstimos ativos, histórico/lidos) — atualizado: "Livros lidos" = 8 (inclui 1 leitura em turma) e linha de histórico com a tag **Leitura em turma** | [`25:2092`](https://www.figma.com/design/VbZ6YOroBB9QfWkppxzkut?node-id=25-2092) | [`29:8970`](https://www.figma.com/design/VbZ6YOroBB9QfWkppxzkut?node-id=29-8970) |
 | 15b | Resumo do professor (mesma tela, variação) | [`25:2534`](https://www.figma.com/design/VbZ6YOroBB9QfWkppxzkut?node-id=25-2534) | [`29:9017`](https://www.figma.com/design/VbZ6YOroBB9QfWkppxzkut?node-id=29-9017) |
-| 17 | Emprestar exemplar (modal): códigos com status, busca de leitor, datas | [`27:3114`](https://www.figma.com/design/VbZ6YOroBB9QfWkppxzkut?node-id=27-3114) | [`29:9165`](https://www.figma.com/design/VbZ6YOroBB9QfWkppxzkut?node-id=29-9165) |
+| 17 | Emprestar exemplar (modal): códigos com status, busca de leitor, datas — devolução prevista 19/10/2026, ajuda "Padrão: 7 dias" | [`27:3114`](https://www.figma.com/design/VbZ6YOroBB9QfWkppxzkut?node-id=27-3114) | [`29:9165`](https://www.figma.com/design/VbZ6YOroBB9QfWkppxzkut?node-id=29-9165) |
 | 17b | Emprestar exemplar — todos os exemplares emprestados | [`27:3326`](https://www.figma.com/design/VbZ6YOroBB9QfWkppxzkut?node-id=27-3326) | [`29:9241`](https://www.figma.com/design/VbZ6YOroBB9QfWkppxzkut?node-id=29-9241) |
 | 18 | Empréstimos — lista (abas Ativos/Atrasados/Devolvidos/Todos, ação Devolver) | [`28:4003`](https://www.figma.com/design/VbZ6YOroBB9QfWkppxzkut?node-id=28-4003) | [`29:9313`](https://www.figma.com/design/VbZ6YOroBB9QfWkppxzkut?node-id=29-9313) |
 | 19 | Registrar devolução (modal) com "Marcar como lido" | [`29:4361`](https://www.figma.com/design/VbZ6YOroBB9QfWkppxzkut?node-id=29-4361) | [`29:9361`](https://www.figma.com/design/VbZ6YOroBB9QfWkppxzkut?node-id=29-9361) |
 | 19b | Devolução registrada: lista atualizada + toast de sucesso | [`29:4483`](https://www.figma.com/design/VbZ6YOroBB9QfWkppxzkut?node-id=29-4483) | [`29:9442`](https://www.figma.com/design/VbZ6YOroBB9QfWkppxzkut?node-id=29-9442) |
 
-**Acervo e Edição de livro na Fase 2:** as antigas telas 16 e 16b foram apagadas porque ficaram iguais às telas 4 ([`6:197`](https://www.figma.com/design/VbZ6YOroBB9QfWkppxzkut?node-id=6-197) / [`9:2294`](https://www.figma.com/design/VbZ6YOroBB9QfWkppxzkut?node-id=9-2294)) e 5b ([`7:905`](https://www.figma.com/design/VbZ6YOroBB9QfWkppxzkut?node-id=7-905) / [`9:2410`](https://www.figma.com/design/VbZ6YOroBB9QfWkppxzkut?node-id=9-2410)) do MVP, que agora seguem esse padrão. As telas 17–19b subiram duas colunas para fechar o espaço (x de 12240 a 17680).
+**Acervo e Edição de livro na Fase 2:** as antigas telas 16 e 16b foram apagadas porque ficaram iguais às telas 4 ([`6:197`](https://www.figma.com/design/VbZ6YOroBB9QfWkppxzkut?node-id=6-197) / [`9:2294`](https://www.figma.com/design/VbZ6YOroBB9QfWkppxzkut?node-id=9-2294)) e 5b ([`7:905`](https://www.figma.com/design/VbZ6YOroBB9QfWkppxzkut?node-id=7-905) / [`9:2410`](https://www.figma.com/design/VbZ6YOroBB9QfWkppxzkut?node-id=9-2410)) do MVP, que agora seguem esse padrão. Em 2026-10-13 as telas 12–19b andaram 4 colunas para a direita (+5440), para abrir espaço às telas 11b–11e ao lado das Turmas. Agora 11b–11e ficam em x = 4080 a 8160, a 12 em x = 9520 e as 17–19b em x = 17680 a 23120. O separador da Fase 2 foi alargado para 27120 px. Depois, ainda em 2026-10-13, as telas 13–19b andaram mais 2 colunas (+2720) para abrir espaço às telas 12b e 12c (x = 10880 e 12240). Agora as telas 13–19b ficam em x = 13600 a 25840, e o separador tem 29840 px.
 
-**Fluxo:** Turmas → card → Turma (detalhe) → olho na linha → Resumo do aluno. Leitores → olho → Resumo do aluno/professor → "Novo empréstimo" abre o modal 17 com o leitor já escolhido. Acervo → "Emprestar" (ou Edição → "Emprestar") → modal 17 com o livro já escolhido. Empréstimos / Resumo → "Devolver" → modal 19 → toast (19b).
+**Fluxo:** Turmas → card → Turma (detalhe) → olho na linha → Resumo do aluno. Turma (detalhe) → "Nova leitura" (no header ou no estado vazio 11c) → modal 11d → "Registrar leitura" → aba Leituras da turma (11b) atualizada. Sem nenhum presente, o modal fica como na 11e. A lixeira na linha de leitura abre o Modal/Confirmação. Turma (detalhe) → "Editar turma" → modal 12b (ou 12c, se a turma tem alunos) → "Excluir turma" → Modal/Confirmação → volta para a lista de Turmas. Leitores → olho → Resumo do aluno/professor → "Novo empréstimo" abre o modal 17 com o leitor já escolhido. Acervo → "Emprestar" (ou Edição → "Emprestar") → modal 17 com o livro já escolhido. Empréstimos / Resumo → "Devolver" → modal 19 → toast (19b).
 
 ### Componentes novos (03 Design System, coluna x = 4200)
 
@@ -162,11 +168,15 @@ As telas ficam na página `02 Wireframes` (`1:3`), abaixo das linhas do MVP: sep
 | Avatar | Tamanho = P (32) · M (40) · G (64); Iniciais | [`18:263`](https://www.figma.com/design/VbZ6YOroBB9QfWkppxzkut?node-id=18-263) |
 | Textarea | Estado = Padrão · Foco; Rótulo, Valor, Ajuda, Mostrar ajuda | [`18:274`](https://www.figma.com/design/VbZ6YOroBB9QfWkppxzkut?node-id=18-274) |
 | Tabela/Célula cabeçalho | Rótulo, Mostrar ordenação (monta o cabeçalho de qualquer tabela) | [`18:275`](https://www.figma.com/design/VbZ6YOroBB9QfWkppxzkut?node-id=18-275) |
-| Tabela/Linha empréstimo | Estado = Padrão · Hover; Livro, Autor, Leitor, Turma, Emprestado em, Data prevista, Relativo; Mostrar leitor, Mostrar ação, Mostrar relativo; badges Código/Leitor/Status expostos | [`19:274`](https://www.figma.com/design/VbZ6YOroBB9QfWkppxzkut?node-id=19-274) |
+| Tabela/Linha empréstimo | Estado = Padrão · Hover × Origem = Empréstimo · Leitura em turma. O eixo Origem é novo, e a variante Leitura em turma só existe em Padrão: use com Mostrar leitor = false; a tag ocupa Código + Emprestado em e o Status vira "Presente na leitura"; Livro, Autor, Leitor, Turma, Emprestado em, Data prevista, Relativo; Mostrar leitor, Mostrar ação, Mostrar relativo; badges Código/Leitor/Status expostos | [`19:274`](https://www.figma.com/design/VbZ6YOroBB9QfWkppxzkut?node-id=19-274) |
 | Tabela/Linha leitor | Estado = Padrão · Hover; Nome, Detalhe, Coluna 2, Emprestados, Lidos; Mostrar coluna 2, Mostrar atraso; Avatar exposto | [`19:363`](https://www.figma.com/design/VbZ6YOroBB9QfWkppxzkut?node-id=19-363) |
 | Card de turma | Estado = Padrão · Hover · Foco; Nome, Ano e turno, Professor, Alunos, Empréstimos, Mostrar atrasos | [`20:412`](https://www.figma.com/design/VbZ6YOroBB9QfWkppxzkut?node-id=20-412) |
 | Exemplar opção | Estado = Disponível · Selecionado · Emprestado; Código, Detalhe; Badge status exposto | [`20:448`](https://www.figma.com/design/VbZ6YOroBB9QfWkppxzkut?node-id=20-448) |
 | Leitor resultado | Estado = Padrão · Hover · Selecionado; Nome, Turma, Info; Avatar e Badge leitor expostos | [`20:493`](https://www.figma.com/design/VbZ6YOroBB9QfWkppxzkut?node-id=20-493) |
+| Livro resultado | Estado = Padrão · Hover · Selecionado; Título, Autor e categoria, Info. Mesmo padrão do Leitor resultado, com capa (ícone book-open) no lugar do avatar | [`43:797`](https://www.figma.com/design/VbZ6YOroBB9QfWkppxzkut?node-id=43-797) |
+| Aluno presença | Estado = Presente · Ausente · Foco; Matrícula; Checkbox exposto (Rótulo = nome). Ausente = checkbox vazio + fundo `bg/subtle` + nome `text/muted` + tag "× Ausente" | [`43:894`](https://www.figma.com/design/VbZ6YOroBB9QfWkppxzkut?node-id=43-894) |
+| Tabela/Linha leitura | Estado = Padrão · Hover; Data, Livro, Autor, Presentes, Ausentes, Mostrar ausentes; ação Excluir (icon button Perigo) | [`43:949`](https://www.figma.com/design/VbZ6YOroBB9QfWkppxzkut?node-id=43-949) |
+| Badge/Leitura em turma | ícone school + "Leitura em turma" (`text/link` sobre `bg/brand-subtle`, como o Badge/Leitor) | [`43:785`](https://www.figma.com/design/VbZ6YOroBB9QfWkppxzkut?node-id=43-785) |
 
 Nenhuma variável nova: tudo usa os tokens `Tema`, `Espaçamento` e `Raio` existentes, então o `tokens.json` não mudou. A auditoria das 32 telas e dos componentes novos não encontrou nenhuma cor fixa (as únicas cores fora de variável são as sombras dos modais e do toast, como na Fase 0).
 
@@ -178,11 +188,42 @@ Nenhuma variável nova: tudo usa os tokens `Tema`, `Espaçamento` e `Raio` exist
 15. **Leitor = aluno ou professor.** O mesmo badge de tipo aparece em tabelas, busca e resumos. Os dois tipos dividem uma única tela de Leitores (abas) e uma única tela de resumo (15/15b).
 16. **Turma com 1 professor responsável.** O professor aparece no card, no detalhe ("Trocar professor") e no cadastro do aluno (texto de apoio abaixo do select de turma). No modal "Nova turma" dá para criar o professor sem sair dele, como a criação rápida de categoria do cadastro de livro.
 17. **"Livros lidos" = devoluções marcadas como lidas.** O checkbox "Marcar como lido" vem marcado por padrão na devolução. No histórico, o badge Devolvido ganha o detalhe "· lido".
-18. **Prazos.** O padrão é 14 dias (campo editável). A coluna "Devolver até" mostra o prazo relativo ("vence hoje", "7 dias de atraso") e é a ordenação padrão da lista de Empréstimos. A aba Ativos inclui os atrasados.
+18. **Prazos.** O padrão é 7 dias (campo editável; era 14 até 2026-10-13). O modal 17 mostra "Padrão: 7 dias" e o Resumo, "Prazo padrão: 7 dias". A coluna "Devolver até" mostra o prazo relativo ("vence hoje", "7 dias de atraso") e é a ordenação padrão da lista de Empréstimos. A aba Ativos inclui os atrasados.
 19. **Cadastro de aluno em página** (mesmo padrão do Cadastro de livro): resumo de erros no topo, erro inline com ícone na matrícula duplicada e Salvar/Limpar no header. Professor, por ser mais simples (nome + contato), pode usar o mesmo formulário com menos campos.
 20. **Edição de livro** (tela 5b). Cada código mostra o badge de status. Códigos emprestados não podem ser removidos nem renomeados até a devolução (sem lixeira, com aviso no rodapé).
 
 21. **A navegação e o Acervo da Fase 2 viraram o padrão do arquivo.** A `Sidebar` única já traz o grupo "Circulação", e `Tabela/Cabeçalho` + `Tabela/Linha` já trazem "Disponíveis X de Y" e a ação Emprestar. Os componentes temporários `Sidebar (Fase 2)` e `Tabela/Linha acervo (Fase 2)` foram aposentados (apagados, sem instâncias). O Cadastro de livro (tela 5) continua sem badge de status, porque exemplar novo ainda não tem empréstimo. **Atenção:** o wireframe do MVP agora mostra recursos da Fase 2 (itens de Circulação, coluna Disponíveis e botão Emprestar). Até a Fase 2 ser implementada, o front do MVP deve esconder esses elementos ou deixá-los desabilitados.
+
+### Nova leitura (leitura coletiva da turma) — 2026-10-13
+
+Telas 11 (atualizada), 11b–11e, 15 (atualizada) e 17 (prazo). Nenhuma variável nova, então o `tokens.json` não mudou. Também mudou: a turma 5º ano A agora tem 26 alunos (era 28) nas telas 10, 11 e 12, para bater com o exemplo "24 de 26".
+
+22. **Abas no detalhe da turma, não uma segunda tabela empilhada.** Em 1280×800, a tabela de alunos e a de leituras não cabem uma embaixo da outra sem rolagem dupla. Por isso "Leituras da turma" é a segunda aba do detalhe (componente Tab, com contagem). "Nova leitura" fica no header, como botão secundário entre "Editar turma" e "Adicionar aluno", e é também a ação do estado vazio (11c).
+23. **Seletor de livro igual ao de leitor.** O campo Livro segue o padrão do modal "Emprestar exemplar": Input Busca + lista de resultados (`Livro resultado`). O livro escolhido fica com borda `border/focus` e check. Como a leitura não usa exemplar, a linha mostra o total de exemplares, e não a disponibilidade.
+24. **Presença: todos marcados, e ausente com mais de um sinal.**
+    - A lista mostra os alunos em ordem alfabética, com a matrícula. Tem altura fixa (254 px), com rolagem e barra visível.
+    - Ausente: checkbox vazio, fundo `bg/subtle`, nome em `text/muted` (contraste 5.36 no claro e 5.62 no escuro) e a tag "× Ausente".
+    - O contador "24 de 26 presentes" e os atalhos "Marcar todos" / "Desmarcar todos" (botões Fantasma, 40 px) ficam acima da lista.
+25. **Erro de presença** (`VALIDATION`, `field: "studentIds"`).
+    - A lista ganha borda de 2 px `feedback/danger`, e a mensagem com ícone fica logo abaixo: "Marque pelo menos 1 aluno presente para registrar a leitura."
+    - "Registrar leitura" e "Desmarcar todos" ficam desabilitados.
+    - A duplicata turma + livro + data (`field: "bookId"`) deve aparecer como erro no campo Livro (Input Estado = Erro), no mesmo padrão.
+26. **Leitura no Resumo do aluno.** A leitura entra no histórico como `Tabela/Linha empréstimo` com Origem = Leitura em turma:
+    - a tag "Leitura em turma" fica no lugar do código;
+    - "Emprestado em" mostra "—";
+    - "Lido em" mostra a data da leitura (a coluna "Devolvido em" virou "Lido em", que serve para os dois tipos);
+    - o Status diz "Presente na leitura".
+
+    O card "Livros lidos" conta livros distintos e cita as leituras no detalhe ("inclui 1 leitura em turma").
+27. **Excluir leitura** usa o `Modal/Confirmação` que já existe, por exemplo: "Excluir leitura? O livro deixa de contar como lido para os 24 alunos presentes." Não há frame próprio para essa confirmação.
+
+### Excluir turma no modal de edição — 2026-10-13
+
+Telas 12b e 12c são novas. Não há variável nem componente novo: o botão é o Button Estilo = Perigo (Padrão e Desabilitado) com `icon/trash-2`, e a dica usa o mesmo estilo de texto e a mesma cor `text/muted` das ajudas de campo. O `tokens.json` não mudou.
+
+28. **Excluir turma fica dentro de "Editar turma", não no header do detalhe.** Excluir é uma ação rara e destrutiva, e no header ela competia com "Nova leitura" e "Adicionar aluno". O header da turma (telas 11 e 11b–11d) fica com Editar turma · Nova leitura · Adicionar aluno. No rodapé do modal, Excluir fica sozinho à esquerda, longe de Salvar, para evitar clique por engano. Ele abre o `Modal/Confirmação`, por exemplo: "Excluir a turma 4º ano B? Essa ação não pode ser desfeita."
+    - Com alunos, o botão fica desabilitado e a dica aparece sempre (não só no hover), abaixo da linha de botões. No código, o botão deve ter `aria-describedby` apontando para a dica. Ele também deve continuar focável (`aria-disabled="true"` em vez de `disabled`), para o leitor de tela ler o motivo.
+    - O modal "Nova turma" (tela 12) não tem o botão.
 
 ## Como usar (para `libok-tailwind-ui` / `libok-react-frontend`)
 

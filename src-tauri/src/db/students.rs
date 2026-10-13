@@ -24,7 +24,8 @@ pub struct Student {
     pub id: i64,
     pub name: String,
     pub registration: String,
-    pub class_room: StudentClass,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub class_room: Option<StudentClass>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub guardian: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -42,7 +43,9 @@ pub struct Student {
 pub struct StudentInput {
     pub name: String,
     pub registration: String,
-    pub class_id: i64,
+    /// `None` só é aceito no `update` (aluno sem turma); o `create` exige turma.
+    #[serde(default)]
+    pub class_id: Option<i64>,
     #[serde(default)]
     pub guardian: Option<String>,
     #[serde(default)]
@@ -56,14 +59,16 @@ pub struct StudentInput {
 pub struct StudentQuery {
     pub text: Option<String>,
     pub class_id: Option<i64>,
+    /// Só alunos sem turma (tem precedência sobre `class_id`).
+    pub no_class: Option<bool>,
     pub overdue_only: Option<bool>,
     pub page: Option<i64>,
     pub page_size: Option<i64>,
 }
 
 const FROM: &str = " FROM students s
-     JOIN classes c ON c.id = s.class_id
-     JOIN teachers t ON t.id = c.teacher_id";
+     LEFT JOIN classes c ON c.id = s.class_id
+     LEFT JOIN teachers t ON t.id = c.teacher_id";
 
 fn select(today: NaiveDate) -> String {
     let today = date_lit(today);
@@ -92,13 +97,16 @@ fn map_student(row: &rusqlite::Row<'_>) -> rusqlite::Result<Student> {
         id: row.get(0)?,
         name: row.get(1)?,
         registration: row.get(2)?,
-        class_room: StudentClass {
-            id: row.get(3)?,
-            name: row.get(4)?,
-            teacher: Ref {
-                id: row.get(5)?,
-                name: row.get(6)?,
-            },
+        class_room: match row.get::<_, Option<i64>>(3)? {
+            Some(id) => Some(StudentClass {
+                id,
+                name: row.get(4)?,
+                teacher: Ref {
+                    id: row.get(5)?,
+                    name: row.get(6)?,
+                },
+            }),
+            None => None,
         },
         guardian: row.get(7)?,
         contact: row.get(8)?,
@@ -146,7 +154,9 @@ pub fn list(conn: &Connection, query: &StudentQuery, today: NaiveDate) -> AppRes
             );
         }
     }
-    if let Some(class_id) = query.class_id {
+    if query.no_class.unwrap_or(false) {
+        filter.push("s.class_id IS NULL", vec![]);
+    } else if let Some(class_id) = query.class_id {
         filter.push("s.class_id = ?", vec![Value::Integer(class_id)]);
     }
     if query.overdue_only.unwrap_or(false) {
@@ -191,13 +201,22 @@ struct Clean {
 fn clean(conn: &Connection, input: &StudentInput, except_id: Option<i64>) -> AppResult<Clean> {
     let name = require("name", "o nome do aluno", &input.name)?;
     let registration = require("registration", "a matrícula", &input.registration)?;
-    let class_ok: bool = conn.query_row(
-        "SELECT EXISTS(SELECT 1 FROM classes WHERE id = ?1)",
-        [input.class_id],
-        |r| r.get(0),
-    )?;
-    if !class_ok {
-        return Err(AppError::validation("classId", "Selecione a turma."));
+    match input.class_id {
+        Some(class_id) => {
+            let class_ok: bool = conn.query_row(
+                "SELECT EXISTS(SELECT 1 FROM classes WHERE id = ?1)",
+                [class_id],
+                |r| r.get(0),
+            )?;
+            if !class_ok {
+                return Err(AppError::validation("classId", "Selecione a turma."));
+            }
+        }
+        // Só o cadastro novo exige turma; na edição `None` = "Sem turma".
+        None if except_id.is_none() => {
+            return Err(AppError::validation("classId", "Selecione a turma."));
+        }
+        None => {}
     }
     let dup: bool = conn.query_row(
         "SELECT EXISTS(SELECT 1 FROM students WHERE lower(registration) = lower(?1) AND id IS NOT ?2)",
@@ -296,7 +315,7 @@ mod tests {
         StudentInput {
             name: name.into(),
             registration: reg.into(),
-            class_id,
+            class_id: Some(class_id),
             guardian: Some(" Mãe ".into()),
             contact: None,
             notes: Some("".into()),
@@ -335,8 +354,9 @@ mod tests {
         assert_eq!(s.registration, "77");
         assert_eq!(s.guardian.as_deref(), Some("Mãe"));
         assert_eq!(s.notes, None);
-        assert_eq!(s.class_room.name, "5º ano A");
-        assert_eq!(s.class_room.teacher.name, "Profa. Marta");
+        let room = s.class_room.as_ref().unwrap();
+        assert_eq!(room.name, "5º ano A");
+        assert_eq!(room.teacher.name, "Profa. Marta");
     }
 
     #[test]
@@ -410,6 +430,50 @@ mod tests {
             q.page_size = Some(1);
         });
         assert_eq!((p.total, p.items.len(), p.page), (2, 1, 2));
+    }
+
+    #[test]
+    fn aluno_sem_turma_cadastro_edicao_e_filtro() {
+        let conn = db();
+        let (_, c, s) = school(&conn);
+        // cadastro novo exige turma
+        let mut sem = input("Sem Turma", "55", c);
+        sem.class_id = None;
+        let err = create(&conn, &sem, today()).unwrap_err();
+        assert_eq!(err.code, ErrorCode::Validation);
+        assert_eq!(err.field.as_deref(), Some("classId"));
+
+        // edição para sem turma e de volta
+        let u = update(&conn, s, &sem_with(s, "João", "2026001", None), today()).unwrap();
+        assert!(u.class_room.is_none());
+        assert!(
+            !serde_json::to_string(&u).unwrap().contains("classRoom"),
+            "classRoom ausente na serialização"
+        );
+        let back = update(&conn, s, &input("João", "2026001", c), today()).unwrap();
+        assert_eq!(back.class_room.unwrap().id, c);
+        update(&conn, s, &sem_with(s, "João", "2026001", None), today()).unwrap();
+
+        let q = |f: &dyn Fn(&mut StudentQuery)| {
+            let mut q = StudentQuery::default();
+            f(&mut q);
+            list(&conn, &q, today()).unwrap()
+        };
+        assert_eq!(q(&|_| {}).total, 1, "sem turma aparece na lista");
+        assert_eq!(q(&|q| q.no_class = Some(true)).total, 1);
+        assert_eq!(q(&|q| q.class_id = Some(c)).total, 0);
+        assert_eq!(q(&|q| q.text = Some("joao".into())).total, 1);
+        let other = student(&conn, "Maria", "9", c);
+        assert_eq!(q(&|q| q.no_class = Some(true)).items[0].id, s);
+        assert_eq!(q(&|_| {}).total, 2);
+        assert_ne!(other, s);
+    }
+
+    fn sem_with(_id: i64, name: &str, reg: &str, class_id: Option<i64>) -> StudentInput {
+        StudentInput {
+            class_id,
+            ..input(name, reg, 0)
+        }
     }
 
     #[test]

@@ -50,6 +50,8 @@ pub fn handler<R: tauri::Runtime>() -> impl Fn(tauri::ipc::Invoke<R>) -> bool + 
         files::export_csv,
         files::preview_csv,
         files::import_csv,
+        files::validate_import_rows,
+        files::import_rows,
         files::backup_db,
         files::restore_db,
         // turmas

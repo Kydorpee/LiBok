@@ -41,7 +41,7 @@ impl Reader {
             kind: ReaderKind::Student,
             id: s.id,
             name: s.name.clone(),
-            class_label: Some(s.class_room.name.clone()),
+            class_label: s.class_room.as_ref().map(|c| c.name.clone()),
             active_loans: s.active_loans,
             overdue_loans: s.overdue_loans,
         }
@@ -89,7 +89,7 @@ pub fn search_readers(
             (SELECT COUNT(*) FROM loans l WHERE l.student_id = s.id AND l.returned_at IS NULL
                 AND l.due_at < {today_lit}),
             s.name_norm
-         FROM students s JOIN classes c ON c.id = s.class_id{}
+         FROM students s LEFT JOIN classes c ON c.id = s.class_id{}
          ORDER BY s.name_norm, s.id LIMIT ?",
         sf.where_sql()
     );
@@ -102,7 +102,7 @@ pub fn search_readers(
                 kind: ReaderKind::Student,
                 id: r.get(0)?,
                 name: r.get(1)?,
-                class_label: Some(r.get(2)?),
+                class_label: r.get(2)?,
                 active_loans: r.get(3)?,
                 overdue_loans: r.get(4)?,
             },
@@ -308,5 +308,22 @@ mod tests {
                 .code,
             ErrorCode::NotFound
         );
+    }
+
+    #[test]
+    fn aluno_sem_turma_aparece_na_busca_e_no_resumo() {
+        let conn = db();
+        let (_, c, s) = school(&conn);
+        crate::db::classes::delete(&conn, c).unwrap();
+        let found = search_readers(&conn, "joao", None, today()).unwrap();
+        assert_eq!(found.len(), 1);
+        assert_eq!(found[0].class_label, None);
+        assert_eq!(search_readers(&conn, "", None, today()).unwrap().len(), 2); // aluno + professora
+        book(&conn, "L1", &["A1"]);
+        lend(&conn, "A1", ReaderKind::Student, s, "2026-10-30");
+        let sum = get_reader_summary(&conn, ReaderKind::Student, s, today()).unwrap();
+        assert_eq!(sum.counts.active, 1);
+        assert_eq!(sum.reader.class_label, None);
+        assert_eq!(sum.active_loans[0].reader.class_label, None);
     }
 }

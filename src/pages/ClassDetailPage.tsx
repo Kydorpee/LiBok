@@ -29,7 +29,6 @@ import type { ClassReading, ClassRoom } from "../lib/types";
 import {
   useClass,
   useClassReadings,
-  useDeleteClass,
   useDeleteClassReading,
   useUpdateClass,
 } from "../features/classes/hooks";
@@ -97,10 +96,8 @@ export default function ClassDetailPage() {
   const navigate = useNavigate();
   const toast = useToast();
   const q = useClass(id);
-  const del = useDeleteClass();
   const [editing, setEditing] = useState(false);
   const [swapping, setSwapping] = useState(false);
-  const [confirmDelete, setConfirmDelete] = useState(false);
   const [reading, setReading] = useState(false);
   const [deletingReading, setDeletingReading] = useState<ClassReading | null>(null);
   const readings = useClassReadings(id);
@@ -134,17 +131,6 @@ export default function ClassDetailPage() {
     setDeletingReading(null);
   }
 
-  async function onDelete() {
-    try {
-      await del.mutateAsync(c.id);
-      toast.success("Turma excluída", c.name);
-      navigate(paths.classes);
-    } catch (e) {
-      toast.error("Não foi possível excluir a turma", toAppError(e).message);
-      setConfirmDelete(false);
-    }
-  }
-
   return (
     <Page
       title={c.name}
@@ -166,9 +152,6 @@ export default function ClassDetailPage() {
           </Button>
           <Button variant="secondary" icon={<Pencil />} onClick={() => setEditing(true)}>
             Editar turma
-          </Button>
-          <Button variant="danger" icon={<Trash2 />} onClick={() => setConfirmDelete(true)}>
-            Excluir
           </Button>
         </>
       }
@@ -318,14 +301,6 @@ export default function ClassDetailPage() {
       />
       <ClassModal open={editing} onClose={() => setEditing(false)} classRoom={c} />
       {swapping ? <SwapTeacherModal classRoom={c} onClose={() => setSwapping(false)} /> : null}
-      <ConfirmDialog
-        open={confirmDelete}
-        title="Excluir turma"
-        message={`Excluir a turma "${c.name}" (${c.schoolYear})? Só é possível se ela não tiver alunos.`}
-        loading={del.isPending}
-        onConfirm={onDelete}
-        onCancel={() => setConfirmDelete(false)}
-      />
     </Page>
   );
 }

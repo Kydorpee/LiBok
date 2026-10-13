@@ -2,7 +2,7 @@
 
 use super::loans::LoanBook;
 use super::normalize::normalize;
-use super::types::{ClassReading, ClassReadingInput, Ref};
+use super::types::{ClassReading, ClassReadingInput, ReadingClass, Ref};
 use super::{fmt_date, parse_date, utc_iso};
 use crate::error::{AppError, AppResult};
 use rusqlite::{Connection, OptionalExtension, params, params_from_iter};
@@ -14,13 +14,14 @@ pub(crate) const READING_KEY: &str = "COALESCE('b' || r.book_id, 'n' || r.book_n
 fn select_sql(where_sql: &str) -> String {
     let created = utc_iso("r.created_at");
     format!(
-        "SELECT r.id, r.class_id, c.name, r.book_id, COALESCE(b.title, r.book_title),
+        "SELECT r.id, r.class_id, COALESCE(c.name, r.class_name), r.book_id, COALESCE(b.title, r.book_title),
             COALESCE(b.author, r.book_author), r.read_at,
             (SELECT COUNT(*) FROM class_reading_students x WHERE x.reading_id = r.id),
-            (SELECT COUNT(*) FROM students s WHERE s.class_id = r.class_id),
+            CASE WHEN c.id IS NULL THEN 0
+                 ELSE (SELECT COUNT(*) FROM students s WHERE s.class_id = c.id) END,
             {created}
          FROM class_readings r
-         JOIN classes c ON c.id = r.class_id
+         LEFT JOIN classes c ON c.id = r.class_id
          LEFT JOIN books b ON b.id = r.book_id
          {where_sql}
          ORDER BY r.read_at DESC, r.id DESC"
@@ -37,7 +38,7 @@ fn query(
         .query_map(params_from_iter(params.iter()), |row| {
             Ok(ClassReading {
                 id: row.get(0)?,
-                class_room: Ref {
+                class_room: ReadingClass {
                     id: row.get(1)?,
                     name: row.get(2)?,
                 },
@@ -118,14 +119,14 @@ pub fn create(conn: &Connection, input: &ClassReadingInput) -> AppResult<ClassRe
     }
 
     let tx = conn.unchecked_transaction()?;
-    let class_exists: bool = tx.query_row(
-        "SELECT EXISTS(SELECT 1 FROM classes WHERE id = ?1)",
-        [input.class_id],
-        |r| r.get(0),
-    )?;
-    if !class_exists {
-        return Err(AppError::not_found("Turma não encontrada."));
-    }
+    let class_name: String = tx
+        .query_row(
+            "SELECT name FROM classes WHERE id = ?1",
+            [input.class_id],
+            |r| r.get(0),
+        )
+        .optional()?
+        .ok_or_else(|| AppError::not_found("Turma não encontrada."))?;
     let (title, author): (String, String) = tx
         .query_row(
             "SELECT title, author FROM books WHERE id = ?1",
@@ -161,15 +162,17 @@ pub fn create(conn: &Connection, input: &ClassReadingInput) -> AppResult<ClassRe
     }
 
     tx.execute(
-        "INSERT INTO class_readings (class_id, book_id, book_title, book_author, book_norm, read_at)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+        "INSERT INTO class_readings
+            (class_id, class_name, book_id, book_title, book_author, book_norm, read_at)
+         VALUES (?1, ?7, ?2, ?3, ?4, ?5, ?6)",
         params![
             input.class_id,
             input.book_id,
             title,
             author,
             normalize(&format!("{title} {author}")),
-            read_at
+            read_at,
+            class_name
         ],
     )?;
     let id = tx.last_insert_rowid();
@@ -400,18 +403,53 @@ mod tests {
     }
 
     #[test]
-    fn apagar_turma_sem_alunos_apaga_as_leituras() {
+    fn apagar_turma_mantem_alunos_emprestimos_e_leituras() {
         let conn = db();
         let (_, c, s1) = school(&conn);
+        let s2 = student(&conn, "Ana", "2", c);
         let b = book(&conn, "Livro", &["A1"]);
-        create(&conn, &input(c, b.id, "2026-10-10", &[s1])).unwrap();
-        assert_eq!(
-            classes::delete(&conn, c).unwrap_err().code,
-            ErrorCode::InUse
-        );
-        students::delete(&conn, s1).unwrap();
+        let other = book(&conn, "Outro", &["B1"]);
+        let r = create(&conn, &input(c, b.id, "2026-10-10", &[s1, s2])).unwrap();
+        let copy: i64 = conn
+            .query_row(
+                "SELECT id FROM copies WHERE registration_code = 'B1'",
+                [],
+                |r| r.get(0),
+            )
+            .unwrap();
+        loans::create(
+            &conn,
+            &LoanInput {
+                copy_id: copy,
+                reader_kind: ReaderKind::Student,
+                reader_id: s1,
+                loaned_at: "2026-10-01".into(),
+                due_at: "2026-10-30".into(),
+            },
+            today(),
+        )
+        .unwrap();
+        assert_ne!(other.id, b.id);
+
         classes::delete(&conn, c).unwrap();
-        assert_eq!(count(&conn, "class_readings"), 0);
-        assert_eq!(count(&conn, "class_reading_students"), 0);
+        assert_eq!(count(&conn, "students"), 2);
+        assert_eq!(count(&conn, "loans"), 1, "empréstimo ativo continua");
+        assert_eq!(count(&conn, "class_readings"), 1);
+        assert_eq!(count(&conn, "class_reading_students"), 2);
+        let s = students::get(&conn, s1, today()).unwrap();
+        assert!(s.class_room.is_none());
+        assert_eq!((s.active_loans, s.read_count), (1, 1));
+
+        let after = get(&conn, r.id).unwrap();
+        assert_eq!(after.class_room.id, None);
+        assert_eq!(after.class_room.name, "5º ano A");
+        assert_eq!(after.class_size, 0);
+        assert_eq!(after.present_count, 2);
+        // no resumo do aluno a leitura continua aparecendo
+        let sum = get_reader_summary(&conn, ReaderKind::Student, s1, today()).unwrap();
+        assert_eq!(sum.readings[0].class_room.name, "5º ano A");
+        assert_eq!(sum.reader.class_label, None);
+        // a leitura pode ser apagada normalmente
+        delete(&conn, r.id).unwrap();
     }
 }

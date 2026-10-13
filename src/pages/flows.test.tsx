@@ -333,3 +333,119 @@ describe("fluxo: nova leitura da turma", () => {
     expect(await within(dialog).findByText("Escolha o livro lido.")).toBeInTheDocument();
   });
 });
+
+describe("fluxo: excluir turma pelo modal de edição", () => {
+  async function emptyClass() {
+    const teacher = (await api.listTeachers())[0];
+    return api.createClass({ name: "Turma Vazia", schoolYear: new Date().getFullYear(), shift: "morning", teacherId: teacher.id });
+  }
+
+  it("o cabeçalho não tem mais Excluir", async () => {
+    resetMock();
+    const cls = (await api.listClasses({ text: "5º ano A", schoolYear: new Date().getFullYear() }))[0];
+    renderApp(`/turmas/${cls.id}`);
+    await screen.findByRole("heading", { name: "5º ano A" });
+    expect(screen.queryByRole("button", { name: /^Excluir/ })).not.toBeInTheDocument();
+  });
+
+  it("turma sem alunos: excluir, confirmar, volta à lista e a turma some", async () => {
+    const { user, router } = renderApp("/turmas");
+    await screen.findByText("8º ano A");
+    const cls = await emptyClass();
+    await router.navigate(`/turmas/${cls.id}`);
+    await screen.findByRole("heading", { name: "Turma Vazia" });
+    await user.click(screen.getByRole("button", { name: "Editar turma" }));
+    const dialog = await screen.findByRole("dialog", { name: "Editar turma" });
+    await user.click(within(dialog).getByRole("button", { name: "Excluir turma" }));
+    const confirm = await screen.findByRole("dialog", { name: "Excluir turma" });
+    expect(within(confirm).getByText(`Excluir a turma "Turma Vazia" (${cls.schoolYear})?`)).toBeInTheDocument();
+    await user.click(within(confirm).getByRole("button", { name: "Excluir" }));
+    expect(await screen.findByText("Turma excluída")).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "Nova turma" })).toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    expect(within(screen.getByRole("main")).queryByText("Turma Vazia")).not.toBeInTheDocument();
+  });
+
+  it("turma com alunos: exclui, alunos ficam sem turma e leituras são mantidas", async () => {
+    const { user, router } = renderApp("/");
+    const year = new Date().getFullYear();
+    const cls = (await api.listClasses({ text: "5º ano A", schoolYear: year }))[0];
+    const { students } = await api.getClass(cls.id);
+    const book = (await api.listBooks({})).items[0];
+    await api.createClassReading({
+      classId: cls.id,
+      bookId: book.id,
+      readAt: "2026-03-10",
+      studentIds: [students[0].id],
+    });
+    await router.navigate(`/turmas/${cls.id}`);
+    await screen.findByRole("heading", { name: "5º ano A" });
+    await user.click(screen.getByRole("button", { name: "Editar turma" }));
+    const dialog = await screen.findByRole("dialog", { name: "Editar turma" });
+    const del = within(dialog).getByRole("button", { name: "Excluir turma" });
+    expect(del).toBeEnabled();
+    await user.click(del);
+    const confirm = await screen.findByRole("dialog", { name: "Excluir turma" });
+    expect(confirm).toHaveTextContent(`Excluir a turma "5º ano A" (${year})?`);
+    expect(confirm).toHaveTextContent(`Os ${students.length} alunos ficarão sem turma. O histórico de empréstimos e leituras é mantido.`);
+    await user.click(within(confirm).getByRole("button", { name: "Excluir" }));
+    expect(await screen.findByText("Turma excluída")).toBeInTheDocument();
+
+    await router.navigate("/leitores");
+    await screen.findByText("Eduarda Martins");
+    await user.selectOptions(screen.getByLabelText("Turma"), "Sem turma");
+    await screen.findByText(students[0].name);
+    const row = screen.getByText(students[0].name).closest("tr")!;
+    expect(within(row).getByText("Sem turma")).toBeInTheDocument();
+
+    // resumo do aluno sem turma, com a leitura da turma excluída
+    await router.navigate(`/leitores/aluno/${students[0].id}`);
+    expect(await screen.findByText("Sem turma")).toBeInTheDocument();
+    const readings = await screen.findByRole("table", { name: /leituras em turma/i });
+    expect(within(readings).getByText("5º ano A")).toBeInTheDocument();
+    expect(within(readings).queryByRole("link", { name: "5º ano A" })).not.toBeInTheDocument();
+  });
+
+  it("filtro Sem turma em Leitores", async () => {
+    const { user, router } = renderApp("/");
+    const cls = (await api.listClasses({ text: "5º ano A", schoolYear: new Date().getFullYear() }))[0];
+    const { students } = await api.getClass(cls.id);
+    await api.deleteClass(cls.id);
+    await router.navigate("/leitores");
+    await screen.findByText("Eduarda Martins");
+    await user.selectOptions(screen.getByLabelText("Turma"), "Sem turma");
+    await waitFor(() => expect(screen.queryByText("Eduarda Martins")).not.toBeInTheDocument());
+    for (const s of students) expect(screen.getByText(s.name)).toBeInTheDocument();
+  });
+
+  it("editar aluno sem turma: salva sem turma e depois escolhe uma", async () => {
+    const { user, router } = renderApp("/");
+    const cls = (await api.listClasses({ text: "5º ano A", schoolYear: new Date().getFullYear() }))[0];
+    const { students } = await api.getClass(cls.id);
+    const s = students[0];
+    await api.deleteClass(cls.id);
+    await router.navigate(`/leitores/alunos/${s.id}/editar`);
+    await screen.findByRole("heading", { name: "Editar aluno" });
+    const select = await screen.findByLabelText("Turma");
+    expect(select).toHaveValue("");
+    expect(screen.getByText("Aluno sem turma: escolha uma turma para matriculá-lo")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Salvar" }));
+    expect(await screen.findByText("Aluno atualizado")).toBeInTheDocument();
+    expect((await api.getStudent(s.id)).classRoom).toBeUndefined();
+
+    const other = (await api.listClasses({ text: "8º ano A" }))[0];
+    await user.selectOptions(select, String(other.id));
+    await user.click(screen.getByRole("button", { name: "Salvar" }));
+    await waitFor(async () => expect((await api.getStudent(s.id)).classRoom?.id).toBe(other.id));
+  });
+
+  it("Nova turma não mostra o botão", async () => {
+    resetMock();
+    const { user } = renderApp("/turmas");
+    await screen.findByText("8º ano A");
+    await user.click(screen.getByRole("button", { name: "Nova turma" }));
+    const dialog = await screen.findByRole("dialog", { name: "Nova turma" });
+    expect(within(dialog).queryByRole("button", { name: "Excluir turma" })).not.toBeInTheDocument();
+  });
+});

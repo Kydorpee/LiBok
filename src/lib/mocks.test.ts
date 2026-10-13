@@ -276,7 +276,7 @@ describe("mock: turmas, professores e alunos", () => {
     expect(await call<ClassRoom[]>("list_classes", { query: { text: "marina" } })).toHaveLength(2);
   });
 
-  it("nome + ano de turma são únicos; turma com alunos não exclui (IN_USE)", async () => {
+  it("nome + ano de turma são únicos; excluir turma deixa alunos sem turma e mantém leituras", async () => {
     const [t] = await call<Teacher[]>("list_teachers", {});
     const dup = await rejection(
       call("create_class", { input: { name: "5º ANO a", schoolYear: year, shift: "evening", teacherId: t.id } }),
@@ -285,7 +285,28 @@ describe("mock: turmas, professores e alunos", () => {
     await call("create_class", { input: { name: "5º ano A", schoolYear: year + 1, shift: "evening", teacherId: t.id } });
     const all = await call<ClassRoom[]>("list_classes", {});
     const withStudents = all.find((c) => c.studentCount > 0)!;
-    expect((await rejection(call("delete_class", { id: withStudents.id }))).code).toBe("IN_USE");
+    const { students } = await call<{ students: Student[] }>("get_class", { id: withStudents.id });
+    const book = (await call<Page<Book>>("list_books", { query: {} })).items[0];
+    await call<ClassReading>("create_class_reading", {
+      input: { classId: withStudents.id, bookId: book.id, readAt: "2026-03-10", studentIds: [students[0].id] },
+    });
+    await call("delete_class", { id: withStudents.id });
+    const after = await call<Student>("get_student", { id: students[0].id });
+    expect(after.classRoom).toBeUndefined();
+    const noClass = await call<Page<Student>>("list_students", { query: { noClass: true } });
+    expect(noClass.total).toBe(students.length);
+    const rs = await call<ReaderSummary>("get_reader_summary", { kind: "student", id: students[0].id });
+    expect(rs.readings[0].classRoom).toEqual({ id: null, name: withStudents.name });
+    expect(rs.readings[0].classSize).toBe(0);
+    const noCls = await rejection(
+      call("create_student", { input: { name: "Sem T", registration: "S-1", classId: null } }),
+    );
+    expect(noCls).toMatchObject({ code: "VALIDATION", field: "classId" });
+    const upd = await call<Student>("update_student", {
+      id: students[0].id,
+      input: { name: after.name, registration: after.registration, classId: null },
+    });
+    expect(upd.classRoom).toBeUndefined();
     const empty = all.find((c) => c.studentCount === 0)!;
     await call("delete_class", { id: empty.id });
   });

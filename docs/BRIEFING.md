@@ -59,6 +59,11 @@ O banco fica em `app_data_dir()/libok.db` (no Windows: `%APPDATA%\com.libok.app\
 **Importar / Exportar**
 - Exportar todo o acervo para CSV compatível com Excel (UTF-8 com BOM, separador `;`).
 - Importar CSV no mesmo formato, com prévia, e relatório final (importados / ignorados por duplicidade / com erro).
+- **Corrigir na prévia** (pedido do usuário em 2026-10-13):
+  - Na prévia, clicar numa linha com **erro** (ou **duplicada**) abre o modal "Corrigir linha N", com título, autor, categoria, assunto e códigos (lista dinâmica, como no cadastro). O campo apontado pelo erro vem destacado.
+  - Ao salvar, a linha é revalidada junto com as demais e o status é atualizado na prévia. Também há a opção "Ignorar esta linha".
+  - A prévia tem um filtro "Só com problemas", para que erros além das 100 primeiras linhas fiquem acessíveis.
+  - "Importar" grava as linhas como estão na tela (já corrigidas), não o arquivo original.
 
 **Geral**
 - Sidebar com navegação: Dashboard, Acervo, Cadastrar, Importar/Exportar, Configurações + grupo "Circulação" (Empréstimos, Leitores, Turmas).
@@ -71,7 +76,15 @@ Telas no Figma: seção "Fase 2" da página `02 Wireframes` (telas 10–19b) e A
 **Turmas**
 - Lista em cards (busca, filtro por ano letivo e turno, estado vazio); detalhe com professor responsável ("Trocar professor") e tabela de alunos.
 - Nova/editar turma em modal: nome*, ano letivo*, turno* (manhã/tarde/noite/integral), professor* (select com criação rápida). Nome + ano únicos.
-- Excluir turma só se não tiver alunos (`IN_USE`).
+- **Excluir turma** (decisão do usuário em 2026-10-13, substitui o antigo bloqueio `IN_USE`): o botão fica no modal "Editar turma".
+  - A turma é apagada e os alunos dela **continuam no sistema como "Sem turma"**, com histórico de empréstimos e leituras intacto. Depois podem ser colocados em outra turma pela edição do aluno.
+  - As leituras coletivas da turma **são mantidas**: continuam contando como lidas para os presentes e mostram o nome da turma guardado no momento da leitura.
+  - A confirmação avisa: "Os N alunos ficarão sem turma. O histórico de empréstimos e leituras é mantido."
+  - Empréstimo ativo de aluno da turma não bloqueia.
+- **Alunos sem turma**:
+  - Aparecem em Leitores com o rótulo "Sem turma", e o filtro de turma ganha a opção "Sem turma".
+  - No cadastro de aluno novo a turma continua obrigatória.
+  - Na edição de um aluno sem turma, o campo vem vazio e pode continuar vazio; se escolher uma turma, o aluno passa a fazer parte dela.
 - **Nova leitura** (pedido do usuário em 2026-10-13): no detalhe da turma, o botão "Nova leitura" abre um modal para registrar uma leitura coletiva.
   - Campos: o livro lido (busca no acervo), a data (hoje, editável) e a lista de alunos da turma com checkbox de presença, **todos marcados por padrão**. É possível desmarcar os ausentes, e há "Marcar todos" / "Desmarcar todos".
   - Ao salvar, o livro conta como **lido** para cada aluno presente: entra em "livros lidos" e no histórico do Resumo do leitor.
@@ -204,9 +217,17 @@ CREATE TABLE class_reading_students (
   PRIMARY KEY (reading_id, student_id)
 );
 CREATE INDEX idx_crs_student ON class_reading_students(student_id);
+
+-- Migration 0004 — turma opcional (2026-10-13)
+-- students.class_id passa a ser NULL-ável com ON DELETE SET NULL (aluno "Sem turma").
+-- class_readings.class_id passa a ser NULL-ável com ON DELETE SET NULL, e ganha
+--   class_name TEXT NOT NULL (snapshot do nome da turma, backfill a partir de classes.name).
+-- Exige recriar as duas tabelas: fazer com foreign_keys=OFF FORA da transação, seguido de
+--   PRAGMA foreign_key_check, preservando ids, índices e as FKs que apontam para elas
+--   (loans.student_id, class_reading_students). NÃO pode haver cascata apagando loans/presenças.
 ```
 
-- Bloqueios por regra de negócio (no repositório, antes do SQL): excluir livro, remover/renomear código ou excluir leitor com empréstimo ativo → `HAS_ACTIVE_LOANS`; excluir turma com alunos ou professor responsável por turma → `IN_USE`.
+- Bloqueios por regra de negócio (no repositório, antes do SQL): excluir livro, remover/renomear código ou excluir leitor com empréstimo ativo → `HAS_ACTIVE_LOANS`; excluir professor responsável por turma → `IN_USE`. Excluir turma **não** é bloqueado: em transação, os alunos ficam com `class_id = NULL` e as leituras guardam o `class_name`.
 - `update_book` faz **diff** dos códigos (mantém o `copies.id` dos códigos que continuam), para não perder vínculo dos empréstimos.
 - "Hoje" é a data local da máquina (`chrono::Local`), calculada no Rust.
 
@@ -247,12 +268,12 @@ type ClassRoom = { id: number; name: string; schoolYear: number; shift: Shift; t
 type ClassInput = { name: string; schoolYear: number; shift: Shift; teacherId: number };
 type ClassQuery = { text?: string; schoolYear?: number; shift?: Shift };
 type Student = {
-  id: number; name: string; registration: string; classRoom: Ref & { teacher: Ref };
+  id: number; name: string; registration: string; classRoom?: Ref & { teacher: Ref };   // ausente = "Sem turma"
   guardian?: string; contact?: string; notes?: string;
   activeLoans: number; overdueLoans: number; readCount: number; createdAt: string;
 };
-type StudentInput = { name: string; registration: string; classId: number; guardian?: string; contact?: string; notes?: string };
-type StudentQuery = { text?: string; classId?: number; overdueOnly?: boolean; page?: number; pageSize?: number };
+type StudentInput = { name: string; registration: string; classId: number | null; guardian?: string; contact?: string; notes?: string };   // null só é aceito no update (create exige turma → VALIDATION field "classId")
+type StudentQuery = { text?: string; classId?: number; noClass?: boolean; overdueOnly?: boolean; page?: number; pageSize?: number };   // noClass = só alunos sem turma
 type Loan = {
   id: number; copyId: number | null; code: string; book: { id: number | null; title: string; author: string };
   reader: Reader; loanedAt: string; dueAt: string; returnedAt?: string; markedRead: boolean; status: LoanStatus;
@@ -264,8 +285,9 @@ type CopyStatus = { copyId: number; code: string; status: 'available' | 'loaned'
 type ReaderSummary = { reader: Reader; student?: Student; teacher?: Teacher; activeLoans: Loan[]; history: Loan[]; readings: ClassReading[]; counts: { active: number; overdue: number; read: number } };
 // Leitura coletiva da turma
 type ClassReading = {
-  id: number; classRoom: Ref; book: { id: number | null; title: string; author: string };
+  id: number; classRoom: { id: number | null; name: string }; book: { id: number | null; title: string; author: string };
   readAt: string; presentCount: number; classSize: number; students: Ref[]; createdAt: string;
+  // classRoom.id é null se a turma foi excluída (name = snapshot); classSize = 0 nesse caso
 };
 type ClassReadingInput = { classId: number; bookId: number; readAt: string; studentIds: number[] };
 ```
@@ -283,13 +305,15 @@ type ClassReadingInput = { classId: number; bookId: number; readAt: string; stud
 | `get_stats` | — | `Stats` |
 | `export_csv` | `{ path }` | `{ rows: number }` |
 | `preview_csv` | `{ path }` | `CsvPreview` |
-| `import_csv` | `{ path }` | `ImportReport` |
+| `import_csv` | `{ path }` | `ImportReport` (mantido; o front usa `import_rows`) |
+| `validate_import_rows` | `{ rows: ImportRow[] }` | `CsvPreview` |
+| `import_rows` | `{ rows: ImportRow[] }` | `ImportReport` |
 | `backup_db` | `{ path }` | `void` |
 | `restore_db` | `{ path }` | `void` |
 | `list_classes` | `ClassQuery` | `ClassRoom[]` |
 | `get_class` | `{ id }` | `{ classRoom: ClassRoom; students: Student[] }` |
 | `create_class` / `update_class` | `ClassInput` / `{ id, input: ClassInput }` | `ClassRoom` |
-| `delete_class` | `{ id }` | `void` (`IN_USE` se tiver alunos) |
+| `delete_class` | `{ id }` | `void` (alunos ficam sem turma; leituras mantidas) |
 | `list_teachers` | `{ text? }` | `Teacher[]` |
 | `create_teacher` / `update_teacher` | `TeacherInput` / `{ id, input: TeacherInput }` | `Teacher` |
 | `delete_teacher` | `{ id }` | `void` (`IN_USE`, `HAS_ACTIVE_LOANS`) |
@@ -311,7 +335,13 @@ Erros: todo command retorna `Result<T, AppError>`; o front mostra `message` em t
 
 **Convenções (decididas pelo orquestrador em 2026-10-12):**
 - Nomes dos argumentos do `invoke` (camelCase, padrão do Tauri): structs de consulta entram como `{ query }` e de entrada como `{ input }` — `list_books {query}`, `create_book {input}`, `update_book {id, input}`, `list_classes {query}`, `create_class {input}`, `update_class {id, input}`, `create_teacher {input}`, `update_teacher {id, input}`, `list_students {query}`, `create_student {input}`, `update_student {id, input}`, `list_loans {query}`, `create_loan {input}`. Parâmetros soltos ficam soltos: `list_teachers {text}`, `search_readers {text, limit}`, `get_reader_summary {kind, id}`, `list_copy_status {bookId}`, `return_loan {id, returnedAt, markedRead}`, `create_category {name, color}`, `update_category {id, name, color}`, `get_*`/`delete_* {id}`, CSV/backup `{path}`.
-- `CsvPreview = { rows: { line: number; title: string; author: string; subject: string; categoryName: string; codes: string[]; status: 'ready' | 'duplicate' | 'error'; message?: string }[]; counts: { ready: number; duplicate: number; error: number } }`. Na importação, categoria inexistente é **criada** (cor da paleta de novas). Linhas `duplicate`/`error` são ignoradas e vão para o `ImportReport`.
+- `CsvPreview = { rows: { line: number; title: string; author: string; subject: string; categoryName: string; codes: string[]; status: 'ready' | 'duplicate' | 'error'; message?: string; field?: 'title' | 'author' | 'subject' | 'categoryName' | 'codes' }[]; counts: { ready: number; duplicate: number; error: number } }`.
+  - Mesmo em linha com erro, a prévia devolve os campos que conseguiu ler (vazios se faltarem), para que possam ser corrigidos.
+  - `field` aponta o campo do primeiro erro. Em erro de código, `message` cita o código.
+- `ImportRow = { line: number; title: string; author: string; subject: string; categoryName: string; codes: string[] }`.
+  - `validate_import_rows` aplica exatamente as mesmas regras da prévia, incluindo duplicidade contra o banco e **entre as próprias linhas** (título e código), e devolve os status.
+  - `import_rows` revalida, grava só as `ready` (SAVEPOINT por linha, criando categoria inexistente como no CSV) e devolve o `ImportReport` com as `duplicate`/`error` ignoradas.
+  - Linhas que o usuário mandou ignorar simplesmente não são enviadas. Na importação, categoria inexistente é **criada** (cor da paleta de novas). Linhas `duplicate`/`error` são ignoradas e vão para o `ImportReport`.
 - Duplicidade de nome de turma (nome + ano) e de categoria: `VALIDATION` com `field: "name"`.
 - Código de exemplar duplicado: `DUPLICATE_CODE` com `field: "codes.<índice no input>"` e o código na `message`.
 - `Reader.classLabel` só existe para aluno (`"5º ano A"`); para professor fica ausente — o front usa `Teacher.classes`.

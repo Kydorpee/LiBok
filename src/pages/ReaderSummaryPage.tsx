@@ -97,10 +97,16 @@ export default function ReaderSummaryPage() {
                 <div className="flex gap-1">
                   <dt>Turma:</dt>
                   <dd className="text-text-primary">
-                    <Link to={paths.classDetail(student.classRoom.id)} className="hover:underline">
-                      {student.classRoom.name}
-                    </Link>{" "}
-                    · {student.classRoom.teacher.name}
+                    {student.classRoom ? (
+                      <>
+                        <Link to={paths.classDetail(student.classRoom.id)} className="hover:underline">
+                          {student.classRoom.name}
+                        </Link>{" "}
+                        · {student.classRoom.teacher.name}
+                      </>
+                    ) : (
+                      "Sem turma"
+                    )}
                   </dd>
                 </div>
                 {student.guardian ? (
@@ -237,7 +243,15 @@ export default function ReaderSummaryPage() {
                       <p className="text-body-strong">{r.book.title}</p>
                       <p className="text-caption text-text-muted">{r.book.author}</p>
                     </TableCell>
-                    <TableCell>{r.classRoom.name}</TableCell>
+                    <TableCell>
+                      {r.classRoom.id !== null ? (
+                        <Link to={paths.classDetail(r.classRoom.id)} className="hover:underline">
+                          {r.classRoom.name}
+                        </Link>
+                      ) : (
+                        r.classRoom.name
+                      )}
+                    </TableCell>
                     <TableCell className="whitespace-nowrap">{formatDate(r.readAt)}</TableCell>
                   </TableRow>
                 ))

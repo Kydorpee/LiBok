@@ -35,6 +35,7 @@ import { useDebounced } from "../features/useDebounced";
 import { usePageClamp } from "../features/usePageClamp";
 
 const PAGE_SIZE = 10;
+const NO_CLASS = "none";
 type Tab = "alunos" | "professores";
 
 export default function ReadersPage() {
@@ -53,7 +54,8 @@ export default function ReadersPage() {
   const debounced = useDebounced(text);
   const students = useStudents({
     text: debounced.trim() || undefined,
-    classId: classId ? Number(classId) : undefined,
+    classId: classId && classId !== NO_CLASS ? Number(classId) : undefined,
+    noClass: classId === NO_CLASS ? true : undefined,
     overdueOnly: overdueOnly || undefined,
     page,
     pageSize: PAGE_SIZE,
@@ -139,7 +141,10 @@ export default function ReadersPage() {
                 setClassId(e.target.value);
                 setPage(1);
               }}
-              options={(classes.data ?? []).map((c) => ({ value: String(c.id), label: `${c.name} (${c.schoolYear})` }))}
+              options={[
+                { value: NO_CLASS, label: "Sem turma" },
+                ...(classes.data ?? []).map((c) => ({ value: String(c.id), label: `${c.name} (${c.schoolYear})` })),
+              ]}
             />
             <Checkbox
               className="pb-2.5"
@@ -203,7 +208,7 @@ export default function ReadersPage() {
                         </div>
                       </TableCell>
                       <TableCell>{s.registration}</TableCell>
-                      <TableCell>{s.classRoom.name}</TableCell>
+                      <TableCell>{s.classRoom ? s.classRoom.name : <Badge>Sem turma</Badge>}</TableCell>
                       <TableCell>{s.activeLoans}</TableCell>
                       <TableCell>
                         {s.overdueLoans > 0 ? (

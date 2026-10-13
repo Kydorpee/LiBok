@@ -16,6 +16,7 @@ import type {
   CopyStatus,
   CsvPreview,
   CsvPreviewRow,
+  ImportRow,
   ImportReport,
   Loan,
   LoanInput,
@@ -64,7 +65,7 @@ type StudentRow = {
   id: number;
   name: string;
   registration: string;
-  classId: number;
+  classId: number | null;
   guardian?: string;
   contact?: string;
   notes?: string;
@@ -87,7 +88,8 @@ type LoanRow = {
 
 type ReadingRow = {
   id: number;
-  classId: number;
+  classId: number | null;
+  className: string;
   bookId: number | null;
   title: string;
   author: string;
@@ -260,6 +262,7 @@ export function createMockBackend() {
 
   // ---------- builders ----------
   const classOf = (id: number) => classes.find((c) => c.id === id);
+  const className = (id: number | null) => (id === null ? undefined : classOf(id)?.name);
   const teacherOf = (id: number) => teachers.find((t) => t.id === id);
 
   const bookKey = (r: { bookId: number | null; title: string }) =>
@@ -296,7 +299,7 @@ export function createMockBackend() {
         kind,
         id,
         name: s.name,
-        classLabel: classOf(s.classId)?.name,
+        classLabel: className(s.classId),
         activeLoans: c.active,
         overdueLoans: c.overdue,
       };
@@ -361,14 +364,14 @@ export function createMockBackend() {
   }
 
   function toStudent(s: StudentRow): Student {
-    const c = classOf(s.classId)!;
-    const t = teacherOf(c.teacherId)!;
+    const c = s.classId !== null ? classOf(s.classId) : undefined;
+    const t = c ? teacherOf(c.teacherId) : undefined;
     const k = studentCounts(s.id);
     return {
       id: s.id,
       name: s.name,
       registration: s.registration,
-      classRoom: { id: c.id, name: c.name, teacher: { id: t.id, name: t.name } },
+      classRoom: c && t ? { id: c.id, name: c.name, teacher: { id: t.id, name: t.name } } : undefined,
       guardian: s.guardian,
       contact: s.contact,
       notes: s.notes,
@@ -400,7 +403,7 @@ export function createMockBackend() {
   }
 
   function toReading(r: ReadingRow): ClassReading {
-    const c = classOf(r.classId)!;
+    const c = r.classId !== null ? classOf(r.classId) : undefined;
     const current = r.bookId !== null ? books.find((b) => b.id === r.bookId) : undefined;
     const present = r.studentIds
       .map((id) => students.find((s) => s.id === id))
@@ -409,11 +412,11 @@ export function createMockBackend() {
       .map((s) => ({ id: s.id, name: s.name }));
     return {
       id: r.id,
-      classRoom: { id: c.id, name: c.name },
+      classRoom: c ? { id: c.id, name: c.name } : { id: null, name: r.className },
       book: { id: r.bookId, title: current?.title ?? r.title, author: current?.author ?? r.author },
       readAt: r.readAt,
       presentCount: present.length,
-      classSize: students.filter((s) => s.classId === c.id).length,
+      classSize: c ? students.filter((s) => s.classId === c.id).length : 0,
       students: present,
       createdAt: r.createdAt,
     };
@@ -476,13 +479,16 @@ export function createMockBackend() {
     const registration = input.registration?.trim() ?? "";
     if (!name) fail("VALIDATION", "Informe o nome do aluno.", "name");
     if (!registration) fail("VALIDATION", "Informe a matrícula.", "registration");
-    if (!classOf(input.classId)) fail("VALIDATION", "Selecione a turma.", "classId");
+    // criar exige turma; editar aceita classId null (aluno sem turma)
+    if (input.classId === null || input.classId === undefined) {
+      if (ignoreId === undefined) fail("VALIDATION", "Selecione a turma.", "classId");
+    } else if (!classOf(input.classId)) fail("VALIDATION", "Selecione a turma.", "classId");
     if (students.some((s) => s.id !== ignoreId && normalize(s.registration) === normalize(registration)))
       fail("DUPLICATE_REGISTRATION", "Já existe um aluno com esta matrícula.", "registration");
     return {
       name,
       registration,
-      classId: input.classId,
+      classId: input.classId ?? null,
       guardian: clean(input.guardian),
       contact: clean(input.contact),
       notes: clean(input.notes),
@@ -638,25 +644,68 @@ export function createMockBackend() {
       return { rows: books.length };
     },
     previewCsv(): CsvPreview {
-      const raw = [
+      const raw: ImportRow[] = [
         { line: 2, title: "A Hora da Estrela", author: "Clarice Lispector", subject: "Literatura brasileira", categoryName: "Romance", codes: ["REG-0100"] },
         { line: 3, title: "Poemas Escolhidos", author: "Cecília Meireles", subject: "Poesia", categoryName: "Poesia", codes: ["REG-0101", "REG-0102"] },
         { line: 4, title: "Dom Casmurro", author: "Machado de Assis", subject: "Literatura brasileira", categoryName: "Romance", codes: ["REG-0103"] },
         { line: 5, title: "Vidas Secas", author: "", subject: "Literatura brasileira", categoryName: "Ficção", codes: ["REG-0104"] },
       ];
-      const rows = raw.map((r): CsvPreviewRow => {
-        if (!r.author) return { ...r, status: "error", message: "Autor não informado." };
-        if (books.some((b) => normalize(b.title) === normalize(r.title)))
-          return { ...r, status: "duplicate", message: "Título já cadastrado." };
-        if (r.codes.some((c) => copies.some((x) => normalize(x.code) === normalize(c))))
-          return { ...r, status: "duplicate", message: "Código já cadastrado." };
-        return { ...r, status: "ready" };
+      return m.validateImportRows(raw);
+    },
+    // Mesmas regras do §5: obrigatórios, duplicidade contra o banco e entre as próprias linhas.
+    validateImportRows(input: ImportRow[]): CsvPreview {
+      const seenTitles = new Set<string>();
+      const seenCodes = new Set<string>();
+      const rows = input.map((r): CsvPreviewRow => {
+        const codes = r.codes.map((c) => c.trim()).filter(Boolean);
+        const base = { ...r, codes };
+        const bad = (field: NonNullable<CsvPreviewRow["field"]>, message: string): CsvPreviewRow => ({
+          ...base,
+          status: "error",
+          message,
+          field,
+        });
+        if (!r.title.trim()) return bad("title", "Título não informado.");
+        if (!r.author.trim()) return bad("author", "Autor não informado.");
+        if (!r.categoryName.trim()) return bad("categoryName", "Categoria não informada.");
+        if (!r.subject.trim()) return bad("subject", "Assunto não informado.");
+        if (codes.length === 0) return bad("codes", "Informe ao menos um código de registro.");
+        const norm = codes.map(normalize);
+        const dupInside = norm.find((c, i) => norm.indexOf(c) !== i);
+        if (dupInside !== undefined) return bad("codes", `Código repetido na linha: ${codes[norm.indexOf(dupInside)]}.`);
+        const title = normalize(r.title);
+        const dup = (field: "title" | "codes", message: string): CsvPreviewRow => ({
+          ...base,
+          status: "duplicate",
+          message,
+          field,
+        });
+        let result: CsvPreviewRow | null = null;
+        if (books.some((b) => normalize(b.title) === title)) result = dup("title", "Título já cadastrado.");
+        else if (seenTitles.has(title)) result = dup("title", "Título repetido em outra linha da importação.");
+        else {
+          const hit = codes.find((_c, i) => copies.some((x) => normalize(x.code) === norm[i]) || seenCodes.has(norm[i]));
+          if (hit !== undefined) {
+            const inDb = copies.some((x) => normalize(x.code) === normalize(hit));
+            result = dup(
+              "codes",
+              inDb ? `Código já cadastrado: ${hit}.` : `Código repetido em outra linha da importação: ${hit}.`,
+            );
+          }
+        }
+        if (result) return result;
+        seenTitles.add(title);
+        norm.forEach((c) => seenCodes.add(c));
+        return { ...base, status: "ready" };
       });
       const count = (st: CsvPreviewRow["status"]) => rows.filter((r) => r.status === st).length;
       return { rows, counts: { ready: count("ready"), duplicate: count("duplicate"), error: count("error") } };
     },
     importCsv(): ImportReport {
-      const prev = m.previewCsv();
+      return m.importRows(m.previewCsv().rows);
+    },
+    importRows(input: ImportRow[]): ImportReport {
+      const prev = m.validateImportRows(input);
       const report: ImportReport = { imported: 0, skippedDuplicates: [], errors: [] };
       for (const row of prev.rows) {
         if (row.status === "duplicate") report.skippedDuplicates.push(row.title);
@@ -708,9 +757,13 @@ export function createMockBackend() {
     },
     deleteClass(id: number): void {
       if (!classOf(id)) fail("NOT_FOUND", "Turma não encontrada.");
-      if (students.some((s) => s.classId === id))
-        fail("IN_USE", "Esta turma tem alunos. Mova ou exclua os alunos antes de excluí-la.");
-      readings = readings.filter((r) => r.classId !== id);
+      // alunos ficam sem turma; leituras são mantidas com o nome da turma
+      students.forEach((s) => {
+        if (s.classId === id) s.classId = null;
+      });
+      readings.forEach((r) => {
+        if (r.classId === id) r.classId = null;
+      });
       classes = classes.filter((c) => c.id !== id);
     },
 
@@ -734,6 +787,7 @@ export function createMockBackend() {
       const row: ReadingRow = {
         id: nextId(),
         classId: input.classId,
+        className: classOf(input.classId)!.name,
         bookId: book.id,
         title: book.title,
         author: book.author,
@@ -789,7 +843,8 @@ export function createMockBackend() {
     listStudents(q: StudentQuery = {}): Page<Student> {
       const list = students
         .filter((s) => !q.classId || s.classId === q.classId)
-        .filter((s) => !q.text || matchesTokens(q.text, [s.name, s.registration, classOf(s.classId)?.name]))
+        .filter((s) => !q.noClass || s.classId === null)
+        .filter((s) => !q.text || matchesTokens(q.text, [s.name, s.registration, className(s.classId)]))
         .map(toStudent)
         .filter((s) => !q.overdueOnly || s.overdueLoans > 0)
         .sort((a, b) => normalize(a.name).localeCompare(normalize(b.name)));
@@ -828,7 +883,7 @@ export function createMockBackend() {
       const q = text ?? "";
       const out: Reader[] = [
         ...students
-          .filter((s) => matchesTokens(q, [s.name, s.registration, classOf(s.classId)?.name]))
+          .filter((s) => matchesTokens(q, [s.name, s.registration, className(s.classId)]))
           .map((s) => toReader("student", s.id)),
         ...teachers.filter((x) => matchesTokens(q, [x.name])).map((x) => toReader("teacher", x.id)),
       ];
@@ -955,6 +1010,8 @@ export function createMockBackend() {
     export_csv: () => m.exportCsv(),
     preview_csv: () => m.previewCsv(),
     import_csv: () => m.importCsv(),
+    validate_import_rows: (a) => m.validateImportRows(a.rows as ImportRow[]),
+    import_rows: (a) => m.importRows(a.rows as ImportRow[]),
     backup_db: () => m.noop(),
     restore_db: () => m.noop(),
     list_classes: (a) => m.listClasses(a.query as ClassQuery),

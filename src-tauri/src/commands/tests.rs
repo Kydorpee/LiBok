@@ -15,7 +15,7 @@ use tauri::webview::InvokeRequest;
 use tauri::{App, WebviewUrl, WebviewWindow, WebviewWindowBuilder};
 
 /// Todos os commands da tabela do §5.
-const CONTRACT: [&str; 37] = [
+const CONTRACT: [&str; 39] = [
     "list_books",
     "get_book",
     "create_book",
@@ -28,6 +28,8 @@ const CONTRACT: [&str; 37] = [
     "export_csv",
     "preview_csv",
     "import_csv",
+    "validate_import_rows",
+    "import_rows",
     "backup_db",
     "restore_db",
     "list_classes",
@@ -336,10 +338,7 @@ fn circulacao_ponta_a_ponta() {
         h.err("delete_book", json!({ "id": book_id }))["code"],
         "HAS_ACTIVE_LOANS"
     );
-    assert_eq!(
-        h.err("delete_class", json!({ "id": class_id }))["code"],
-        "IN_USE"
-    );
+    // professor responsável por turma existente continua bloqueado
     assert_eq!(
         h.err("delete_teacher", json!({ "id": teacher_id }))["code"],
         "IN_USE"
@@ -347,6 +346,59 @@ fn circulacao_ponta_a_ponta() {
     assert_eq!(
         h.ok("list_copy_status", json!({ "bookId": book_id }))[0]["status"],
         "loaned"
+    );
+
+    // leitura coletiva da turma (outro livro), antes de excluí-la
+    let other_book = h.ok(
+        "create_book",
+        json!({ "input": {
+            "title": "Iracema", "author": "José de Alencar", "subject": "Romance",
+            "categoryId": romance, "codes": ["B1"]
+        } }),
+    )["id"]
+        .as_i64()
+        .expect("id");
+    h.ok(
+        "create_class_reading",
+        json!({ "input": {
+            "classId": class_id, "bookId": other_book, "readAt": "2026-10-02",
+            "studentIds": [student_id]
+        } }),
+    );
+
+    // excluir turma não é bloqueado: o aluno fica sem turma, empréstimo intacto
+    assert_eq!(h.ok("delete_class", json!({ "id": class_id })), Value::Null);
+    let orphan = h.ok("get_student", json!({ "id": student_id }));
+    assert!(orphan.get("classRoom").is_none(), "{orphan}");
+    assert_eq!(orphan["activeLoans"], 1);
+    assert_eq!(
+        h.ok("list_copy_status", json!({ "bookId": book_id }))[0]["status"],
+        "loaned"
+    );
+    let no_class = h.ok("list_students", json!({ "query": { "noClass": true } }));
+    assert_eq!(no_class["total"], 1);
+    assert_eq!(no_class["items"][0]["id"], student_id);
+    let edited = h.ok(
+        "update_student",
+        json!({ "id": student_id, "input": {
+            "name": "João da Silva", "registration": "2026001", "classId": null
+        } }),
+    );
+    assert!(edited.get("classRoom").is_none(), "{edited}");
+    let new_without_class = h.err(
+        "create_student",
+        json!({ "input": { "name": "Ana", "registration": "2026009", "classId": null } }),
+    );
+    assert_eq!(
+        (
+            new_without_class["code"].clone(),
+            new_without_class["field"].clone()
+        ),
+        (json!("VALIDATION"), json!("classId"))
+    );
+    assert_eq!(
+        h.err("delete_class", json!({ "id": class_id }))["code"],
+        "NOT_FOUND"
     );
 
     let loans = h.ok(
@@ -371,17 +423,21 @@ fn circulacao_ponta_a_ponta() {
     );
     assert_eq!(
         summary["counts"],
-        json!({ "active": 0, "overdue": 0, "read": 1 })
+        json!({ "active": 0, "overdue": 0, "read": 2 })
     );
     assert_eq!(summary["history"][0]["book"]["title"], "Dom Casmurro");
     assert!(summary["student"].is_object() && summary.get("teacher").is_none());
+    // a leitura coletiva sobrevive à turma, com o nome guardado
+    assert_eq!(summary["readings"].as_array().map(Vec::len), Some(1));
+    assert_eq!(summary["readings"][0]["classRoom"]["id"], Value::Null);
+    assert_eq!(summary["readings"][0]["classRoom"]["name"], "5º ano A");
+    assert_eq!(summary["readings"][0]["book"]["title"], "Iracema");
 
-    // sem empréstimo ativo, os bloqueios caem
+    // sem empréstimo ativo nem turma, os bloqueios caem
     assert_eq!(
         h.ok("delete_student", json!({ "id": student_id })),
         Value::Null
     );
-    assert_eq!(h.ok("delete_class", json!({ "id": class_id })), Value::Null);
     let teacher = h.ok(
         "update_teacher",
         json!({ "id": teacher_id, "input": { "name": "Marta Souza" } }),
@@ -434,6 +490,47 @@ fn csv_e_backup_por_caminho() {
             let _ = std::fs::remove_dir_all(dir);
         }
     }
+}
+
+#[test]
+fn importacao_revisada_valida_e_importa_so_as_prontas() {
+    let h = Harness::new();
+    let row = |line: u64, title: &str, author: &str, code: &str| {
+        json!({
+            "line": line, "title": title, "author": author, "subject": "S",
+            "categoryName": "Romance", "codes": [code]
+        })
+    };
+
+    // linha 2 sem autor (erro); linha 3 já corrigida
+    let rows = json!([
+        row(2, "Sem Autor", "", "X1"),
+        row(3, "Corrigido", "B", "X2")
+    ]);
+    let preview = h.ok("validate_import_rows", json!({ "rows": rows }));
+    assert_eq!(preview["rows"][0]["line"], 2);
+    assert_eq!(preview["rows"][0]["status"], "error", "{preview}");
+    assert_eq!(preview["rows"][0]["field"], "author", "{preview}");
+    assert!(preview["rows"][0]["message"].is_string());
+    assert_eq!(preview["rows"][1]["status"], "ready", "{preview}");
+    assert!(preview["rows"][1].get("field").is_none(), "{preview}");
+    assert_eq!(
+        preview["counts"],
+        json!({ "ready": 1, "duplicate": 0, "error": 1 })
+    );
+    // a validação não grava nada
+    assert_eq!(h.ok("list_books", json!({ "query": {} }))["total"], 0);
+
+    let report = h.ok("import_rows", json!({ "rows": rows }));
+    assert_eq!(report["imported"], 1, "{report}");
+    assert_eq!(report["errors"][0]["line"], 2, "{report}");
+    let books = h.ok("list_books", json!({ "query": {} }));
+    assert_eq!(books["total"], 1);
+    assert_eq!(books["items"][0]["title"], "Corrigido");
+
+    // revalidar depois de importar: a linha corrigida vira duplicata
+    let again = h.ok("validate_import_rows", json!({ "rows": rows }));
+    assert_eq!(again["rows"][1]["status"], "duplicate", "{again}");
 }
 
 /// Pasta temporária vazia e exclusiva do teste.

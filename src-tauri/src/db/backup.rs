@@ -394,6 +394,35 @@ mod tests {
     }
 
     #[test]
+    fn restaura_backup_v3_e_migra_para_v4_sem_perder_dados() {
+        let d = dir("v3");
+        let v3 = d.join("v3.db");
+        {
+            let mut c = Connection::open(&v3).unwrap();
+            crate::db::testutil::seed_v3(&mut c);
+        }
+        let live = d.join("libok.db");
+        let mut conn = crate::db::open(&live).unwrap();
+        restore(&mut conn, &v3).unwrap();
+        assert_eq!(pragma(&conn, "user_version"), SCHEMA_VERSION.to_string());
+        assert_eq!(pragma(&conn, "foreign_keys"), "1");
+        let n = |t: &str| -> i64 {
+            conn.query_row(&format!("SELECT COUNT(*) FROM {t}"), [], |r| r.get(0))
+                .unwrap()
+        };
+        assert_eq!(
+            (n("loans"), n("class_reading_students"), n("students")),
+            (2, 2, 2)
+        );
+        let name: String = conn
+            .query_row("SELECT class_name FROM class_readings", [], |r| r.get(0))
+            .unwrap();
+        assert_eq!(name, "5A");
+        drop(conn);
+        let _ = std::fs::remove_dir_all(&d);
+    }
+
+    #[test]
     fn restaura_backup_de_schema_anterior_e_migra() {
         let d = dir("v1");
         let v1 = d.join("v1.db");

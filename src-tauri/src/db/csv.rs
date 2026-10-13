@@ -12,7 +12,7 @@ use super::categories;
 use super::normalize::normalize;
 use crate::error::{AppError, AppResult};
 use rusqlite::Connection;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
 use std::collections::HashSet;
 use std::io::Write;
@@ -40,6 +40,21 @@ pub struct CsvPreviewRow {
     pub status: RowStatus,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub message: Option<String>,
+    /// Campo do primeiro problema: `title`, `author`, `subject`, `categoryName` ou `codes`.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub field: Option<&'static str>,
+}
+
+/// Linha de importação (do arquivo ou editada na prévia).
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ImportRow {
+    pub line: u64,
+    pub title: String,
+    pub author: String,
+    pub subject: String,
+    pub category_name: String,
+    pub codes: Vec<String>,
 }
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize)]
@@ -140,14 +155,10 @@ fn unescape_cell(value: &str) -> &str {
 // Leitura
 // ---------------------------------------------------------------------------
 
+/// Linha lida do arquivo, com erro de leitura (mensagem + campo) quando houver.
 struct Parsed {
-    line: u64,
-    title: String,
-    author: String,
-    category: String,
-    subject: String,
-    codes: Vec<String>,
-    error: Option<String>,
+    row: ImportRow,
+    error: Option<(String, &'static str)>,
 }
 
 /// Windows-1252, bytes 0x80..=0x9F (o resto coincide com Latin-1). Os cinco
@@ -240,7 +251,23 @@ fn parse(path: &Path) -> AppResult<Vec<Parsed>> {
 
     let mut out = Vec::new();
     for record in reader.records() {
-        let record = record?;
+        let record = match record {
+            Ok(r) => r,
+            Err(err) => {
+                let line = match err.kind() {
+                    ::csv::ErrorKind::Utf8 { pos: Some(p), .. } => p.line(),
+                    _ => err.position().map_or(0, |p| p.line()),
+                };
+                out.push(Parsed {
+                    row: ImportRow {
+                        line,
+                        ..ImportRow::default()
+                    },
+                    error: Some((format!("Linha ilegível: {err}"), "title")),
+                });
+                continue;
+            }
+        };
         if record.iter().all(|f| f.trim().is_empty()) {
             continue;
         }
@@ -250,131 +277,172 @@ fn parse(path: &Path) -> AppResult<Vec<Parsed>> {
                 .trim()
                 .to_string()
         };
-        let mut row = Parsed {
+        let row = ImportRow {
             line,
             title: get(title_c),
             author: get(author_c),
-            category: get(category_c),
             subject: get(subject_c),
+            category_name: get(category_c),
             codes: split_codes(&get(codes_c)),
-            error: None,
         };
-        row.error = validate_row(&row, qty_c.map(&get));
-        out.push(row);
+        let error = qty_c
+            .map(&get)
+            .filter(|q| !q.is_empty())
+            .and_then(|q| match q.parse::<usize>() {
+                Ok(n) if n == row.codes.len() => None,
+                Ok(_) => Some("A quantidade não corresponde aos códigos informados.".into()),
+                Err(_) => Some("Quantidade inválida.".to_string()),
+            })
+            .map(|m| (m, "codes"));
+        out.push(Parsed { row, error });
     }
     Ok(out)
 }
 
-fn validate_row(row: &Parsed, quantity: Option<String>) -> Option<String> {
-    if row.title.is_empty()
-        || row.author.is_empty()
-        || row.category.is_empty()
-        || row.subject.is_empty()
-    {
-        return Some("Existem campos obrigatórios vazios.".into());
+/// Erro de regra de uma linha: mensagem e campo apontado.
+fn row_error(row: &ImportRow) -> Option<(String, &'static str)> {
+    let required = [
+        ("title", &row.title),
+        ("author", &row.author),
+        ("categoryName", &row.category_name),
+        ("subject", &row.subject),
+    ];
+    if let Some((field, _)) = required.iter().find(|(_, v)| v.is_empty()) {
+        return Some(("Existem campos obrigatórios vazios.".into(), field));
     }
     if row.codes.is_empty() {
-        return Some("Informe ao menos um código de registro.".into());
+        return Some(("Informe ao menos um código de registro.".into(), "codes"));
     }
     let mut seen = HashSet::new();
-    if let Some(dup) = row.codes.iter().find(|c| !seen.insert(c.to_lowercase())) {
-        return Some(format!("O código {dup} está repetido na linha."));
-    }
-    if let Some(q) = quantity.filter(|q| !q.is_empty()) {
-        match q.parse::<usize>() {
-            Ok(n) if n == row.codes.len() => {}
-            Ok(_) => return Some("A quantidade não corresponde aos códigos informados.".into()),
-            Err(_) => return Some("Quantidade inválida.".into()),
-        }
-    }
-    None
+    row.codes
+        .iter()
+        .find(|c| !seen.insert(c.to_lowercase()))
+        .map(|dup| (format!("O código {dup} está repetido na linha."), "codes"))
 }
 
-/// Classifica cada linha (pronta / duplicada / com erro) sem gravar nada.
-fn analyze(
-    conn: &Connection,
-    parsed: Vec<Parsed>,
-) -> AppResult<Vec<(Parsed, RowStatus, Option<String>)>> {
+/// Normaliza uma linha: `trim` nos campos e códigos vazios descartados.
+fn clean(row: &ImportRow) -> ImportRow {
+    ImportRow {
+        line: row.line,
+        title: row.title.trim().to_string(),
+        author: row.author.trim().to_string(),
+        subject: row.subject.trim().to_string(),
+        category_name: row.category_name.trim().to_string(),
+        codes: row
+            .codes
+            .iter()
+            .map(|c| c.trim())
+            .filter(|c| !c.is_empty())
+            .map(str::to_string)
+            .collect(),
+    }
+}
+
+/// Regra única de validação: obrigatórios, códigos, duplicidade no banco e entre as próprias
+/// linhas. `pre` traz erros já detectados na leitura do arquivo (têm prioridade).
+fn analyze(conn: &Connection, rows: Vec<Parsed>) -> AppResult<CsvPreview> {
     let mut seen_titles = HashSet::new();
     let mut seen_codes = HashSet::new();
-    let mut out = Vec::with_capacity(parsed.len());
-    for row in parsed {
-        if let Some(msg) = row.error.clone() {
-            out.push((row, RowStatus::Error, Some(msg)));
-            continue;
-        }
-        let title_norm = normalize(&row.title);
-        let mut dup: Option<String> = None;
-        if seen_titles.contains(&title_norm) || books::title_exists(conn, &title_norm, None)? {
-            dup = Some("Já existe um livro com esse título.".into());
+    let mut counts = PreviewCounts::default();
+    let mut out = Vec::with_capacity(rows.len());
+    for Parsed { row, error } in rows {
+        let row = clean(&row);
+        let mut status = RowStatus::Ready;
+        let mut problem: Option<(String, &'static str)> = None;
+        if let Some(e) = error.or_else(|| row_error(&row)) {
+            status = RowStatus::Error;
+            problem = Some(e);
         } else {
-            for code in &row.codes {
-                if seen_codes.contains(&code.to_lowercase()) || books::code_exists(conn, code)? {
-                    dup = Some(format!("O código {code} já está cadastrado."));
-                    break;
+            let title_norm = normalize(&row.title);
+            if seen_titles.contains(&title_norm) || books::title_exists(conn, &title_norm, None)? {
+                status = RowStatus::Duplicate;
+                problem = Some(("Já existe um livro com esse título.".into(), "title"));
+            } else {
+                for code in &row.codes {
+                    if seen_codes.contains(&code.to_lowercase()) || books::code_exists(conn, code)?
+                    {
+                        status = RowStatus::Duplicate;
+                        problem = Some((format!("O código {code} já está cadastrado."), "codes"));
+                        break;
+                    }
                 }
             }
-        }
-        match dup {
-            Some(msg) => out.push((row, RowStatus::Duplicate, Some(msg))),
-            None => {
+            if status == RowStatus::Ready {
                 seen_titles.insert(title_norm);
                 seen_codes.extend(row.codes.iter().map(|c| c.to_lowercase()));
-                out.push((row, RowStatus::Ready, None));
             }
         }
+        match status {
+            RowStatus::Ready => counts.ready += 1,
+            RowStatus::Duplicate => counts.duplicate += 1,
+            RowStatus::Error => counts.error += 1,
+        }
+        let (message, field) = match problem {
+            Some((m, f)) => (Some(m), Some(f)),
+            None => (None, None),
+        };
+        out.push(CsvPreviewRow {
+            line: row.line,
+            title: row.title,
+            author: row.author,
+            subject: row.subject,
+            category_name: row.category_name,
+            codes: row.codes,
+            status,
+            message,
+            field,
+        });
     }
-    Ok(out)
+    Ok(CsvPreview { rows: out, counts })
+}
+
+/// Valida linhas (vindas do arquivo ou editadas no front) sem gravar nada.
+pub fn validate_rows(conn: &Connection, rows: &[ImportRow]) -> AppResult<CsvPreview> {
+    analyze(
+        conn,
+        rows.iter()
+            .map(|r| Parsed {
+                row: r.clone(),
+                error: None,
+            })
+            .collect(),
+    )
 }
 
 /// Prévia do arquivo: cada linha com status `ready`/`duplicate`/`error`. Não grava nada.
 pub fn preview(conn: &Connection, path: &Path) -> AppResult<CsvPreview> {
-    let analyzed = analyze(conn, parse(path)?)?;
-    let mut counts = PreviewCounts::default();
-    let rows = analyzed
-        .into_iter()
-        .map(|(row, status, message)| {
-            match status {
-                RowStatus::Ready => counts.ready += 1,
-                RowStatus::Duplicate => counts.duplicate += 1,
-                RowStatus::Error => counts.error += 1,
-            }
-            CsvPreviewRow {
-                line: row.line,
-                title: row.title,
-                author: row.author,
-                subject: row.subject,
-                category_name: row.category,
-                codes: row.codes,
-                status,
-                message,
-            }
-        })
-        .collect();
-    Ok(CsvPreview { rows, counts })
+    analyze(conn, parse(path)?)
 }
 
-/// Importa as linhas prontas numa única transação. Duplicadas e inválidas são
-/// ignoradas e relatadas; categorias novas são criadas com cor da paleta.
+/// Importa o arquivo: `preview` + gravação das linhas `ready` (a mesma de [`import_rows`]).
 pub fn import(conn: &Connection, path: &Path) -> AppResult<ImportReport> {
-    let analyzed = analyze(conn, parse(path)?)?;
+    write_rows(conn, preview(conn, path)?)
+}
+
+/// Revalida e importa só as linhas `ready`, numa transação com SAVEPOINT por linha.
+/// Duplicadas e inválidas são ignoradas e relatadas; categorias novas são criadas.
+pub fn import_rows(conn: &Connection, rows: &[ImportRow]) -> AppResult<ImportReport> {
+    write_rows(conn, validate_rows(conn, rows)?)
+}
+
+fn write_rows(conn: &Connection, checked: CsvPreview) -> AppResult<ImportReport> {
     let tx = conn.unchecked_transaction()?;
     let mut report = ImportReport {
         imported: 0,
         skipped_duplicates: Vec::new(),
         errors: Vec::new(),
     };
-    for (row, status, message) in analyzed {
-        match status {
+    for row in checked.rows {
+        match row.status {
             RowStatus::Duplicate => report.skipped_duplicates.push(row.title),
             RowStatus::Error => report.errors.push(ImportError {
                 line: row.line,
-                message: message.unwrap_or_default(),
+                message: row.message.unwrap_or_default(),
             }),
             RowStatus::Ready => {
                 tx.execute_batch("SAVEPOINT import_row")?;
                 let result =
-                    categories::find_or_create(&tx, &row.category).and_then(|category_id| {
+                    categories::find_or_create(&tx, &row.category_name).and_then(|category_id| {
                         books::insert_in(
                             &tx,
                             &BookInput {
@@ -637,6 +705,122 @@ mod tests {
         assert_eq!(report.errors.len(), 3);
         assert_eq!(report.errors[0].line, 3);
         assert_eq!(books::list(&conn, &BookQuery::default()).unwrap().total, 3);
+    }
+
+    fn ir(line: u64, title: &str, codes: &[&str]) -> ImportRow {
+        ImportRow {
+            line,
+            title: title.into(),
+            author: "A".into(),
+            subject: "S".into(),
+            category_name: "Romance".into(),
+            codes: codes.iter().map(|c| (*c).into()).collect(),
+        }
+    }
+
+    #[test]
+    fn validate_rows_aponta_o_campo_de_cada_erro() {
+        let conn = db();
+        book(&conn, "Existente", &["X1"]);
+        let mut no_author = ir(2, "T2", &["C2"]);
+        no_author.author.clear();
+        let mut no_cat = ir(3, "T3", &["C3"]);
+        no_cat.category_name.clear();
+        let mut no_subj = ir(4, "T4", &["C4"]);
+        no_subj.subject = "  ".into();
+        let rows = vec![
+            ir(1, "", &["C1"]),
+            no_author,
+            no_cat,
+            no_subj,
+            ir(5, "T5", &[" ", ""]),
+            ir(6, "T6", &["D", "d"]),
+            ir(7, "existente", &["C7"]),
+            ir(8, "T8", &["x1"]),
+            ir(9, "Ok", &[" O1 ", ""]),
+            ir(10, "OK", &["O2"]),
+            ir(11, "Outro", &["o1"]),
+        ];
+        let pv = validate_rows(&conn, &rows).unwrap();
+        let got: Vec<_> = pv.rows.iter().map(|r| (r.status, r.field)).collect();
+        use RowStatus::{Duplicate as D, Error as E, Ready as R};
+        assert_eq!(
+            got,
+            vec![
+                (E, Some("title")),
+                (E, Some("author")),
+                (E, Some("categoryName")),
+                (E, Some("subject")),
+                (E, Some("codes")),
+                (E, Some("codes")),
+                (D, Some("title")),
+                (D, Some("codes")),
+                (R, None),
+                (D, Some("title")),
+                (D, Some("codes")),
+            ]
+        );
+        assert!(pv.rows[7].message.as_deref().unwrap().contains("x1"));
+        assert_eq!(pv.rows[8].codes, vec!["O1"]);
+        assert_eq!(
+            pv.counts,
+            PreviewCounts {
+                ready: 1,
+                duplicate: 4,
+                error: 6
+            }
+        );
+        assert_eq!(books::list(&conn, &BookQuery::default()).unwrap().total, 1);
+    }
+
+    #[test]
+    fn linha_corrigida_vira_ready_e_import_rows_ignora_o_resto() {
+        let conn = db();
+        book(&conn, "Existente", &["X1"]);
+        let mut rows = vec![
+            ir(2, "Bom", &["B1"]),
+            ir(3, "", &["B2"]),
+            ir(4, "Existente", &["B3"]),
+            ir(5, "Novo", &["B4"]),
+        ];
+        rows[3].category_name = "Categoria Nova".into();
+        let pv = validate_rows(&conn, &rows).unwrap();
+        assert_eq!(
+            pv.counts,
+            PreviewCounts {
+                ready: 2,
+                duplicate: 1,
+                error: 1
+            }
+        );
+        let report = import_rows(&conn, &rows).unwrap();
+        assert_eq!(report.imported, 2);
+        assert_eq!(report.skipped_duplicates, vec!["Existente"]);
+        assert_eq!(report.errors.len(), 1);
+        assert_eq!(report.errors[0].line, 3);
+        assert_eq!(books::list(&conn, &BookQuery::default()).unwrap().total, 3);
+
+        // corrige as linhas com problema e reenvia
+        rows[1].title = "Corrigido".into();
+        rows[2].title = "Outro título".into();
+        let pv = validate_rows(&conn, &rows[1..3]).unwrap();
+        assert_eq!(pv.counts.ready, 2);
+        let report = import_rows(&conn, &rows[1..3]).unwrap();
+        assert_eq!(report.imported, 2);
+        assert_eq!(books::list(&conn, &BookQuery::default()).unwrap().total, 5);
+    }
+
+    #[test]
+    fn campo_nulo_nao_serializa_e_import_row_usa_camel_case() {
+        let conn = db();
+        let pv = validate_rows(&conn, &[ir(1, "Ok", &["Z1"])]).unwrap();
+        let json = serde_json::to_string(&pv.rows[0]).unwrap();
+        assert!(!json.contains("field") && json.contains("categoryName"));
+        let row: ImportRow = serde_json::from_str(
+            r#"{"line":1,"title":"a","author":"b","subject":"c","categoryName":"d","codes":["e"]}"#,
+        )
+        .unwrap();
+        assert_eq!(row.category_name, "d");
     }
 
     #[test]

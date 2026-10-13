@@ -28,7 +28,7 @@ use std::path::Path;
 
 /// Versão (`PRAGMA user_version`) do schema produzido pelas migrations atuais.
 /// Deve ser incrementada a cada nova migration.
-pub const SCHEMA_VERSION: i32 = 3;
+pub const SCHEMA_VERSION: i32 = 4;
 
 // Regras para novas migrations (F-16)
 // -----------------------------------
@@ -37,6 +37,7 @@ pub const SCHEMA_VERSION: i32 = 3;
 // Consequências:
 // * `ALTER TABLE ... ADD COLUMN` (coluna nula, com ou sem REFERENCES) e
 //   `CREATE INDEX` são seguros: não recriam a tabela (padrão da 0002).
+// * A 0004 recria tabelas: por isso `migrate` desliga as FKs fora da transação.
 // * NUNCA recrie uma tabela (`DROP TABLE` / `RENAME` / `CREATE TABLE novo ...
 //   INSERT SELECT`) numa migration normal: com FKs ligadas o `DROP TABLE` faz
 //   `DELETE` implícito e dispara `ON DELETE CASCADE` / `SET NULL` nas tabelas
@@ -49,12 +50,34 @@ fn migrations() -> Migrations<'static> {
         M::up(include_str!("../../migrations/0001_init.sql")),
         M::up(include_str!("../../migrations/0002_loan_book_id.sql")),
         M::up(include_str!("../../migrations/0003_class_readings.sql")),
+        // Recria `students` e `class_readings`: exige foreign_keys=OFF (ver `migrate`).
+        M::up(include_str!("../../migrations/0004_optional_class.sql")).foreign_key_check(),
     ])
 }
 
+/// Primeira versão cuja migration recria tabelas (precisa de `foreign_keys = OFF`).
+const FIRST_TABLE_REBUILD: i32 = 4;
+
 /// Aplica todas as migrations pendentes.
+///
+/// Quando alguma pendente recria tabelas (0004), `foreign_keys` é desligado
+/// FORA da transação, as migrations rodam (com `foreign_key_check` antes do
+/// commit) e o valor anterior do PRAGMA é restaurado, mesmo em caso de erro.
 pub fn migrate(conn: &mut Connection) -> AppResult<()> {
-    migrations().to_latest(conn)?;
+    let version: i32 = conn.query_row("PRAGMA user_version", [], |r| r.get(0))?;
+    if version >= FIRST_TABLE_REBUILD {
+        migrations().to_latest(conn)?;
+        return Ok(());
+    }
+    let fk_before: i64 = conn.query_row("PRAGMA foreign_keys", [], |r| r.get(0))?;
+    conn.pragma_update(None, "foreign_keys", "OFF")?;
+    let result = migrations().to_latest(conn);
+    conn.pragma_update(
+        None,
+        "foreign_keys",
+        if fk_before == 1 { "ON" } else { "OFF" },
+    )?;
+    result?;
     Ok(())
 }
 
@@ -295,7 +318,7 @@ pub(crate) mod testutil {
             &StudentInput {
                 name: name.into(),
                 registration: reg.into(),
-                class_id,
+                class_id: Some(class_id),
                 guardian: None,
                 contact: None,
                 notes: None,
@@ -304,6 +327,37 @@ pub(crate) mod testutil {
         )
         .unwrap()
         .id
+    }
+
+    /// Cria no `conn` um banco na versão 3 do schema, com dados reais:
+    /// 2 alunos na turma "5A", empréstimo ativo e devolvido, 1 leitura com 2 presenças.
+    pub fn seed_v3(conn: &mut Connection) {
+        conn.pragma_update(None, "foreign_keys", "ON").unwrap();
+        Migrations::new(vec![
+            M::up(include_str!("../../migrations/0001_init.sql")),
+            M::up(include_str!("../../migrations/0002_loan_book_id.sql")),
+            M::up(include_str!("../../migrations/0003_class_readings.sql")),
+        ])
+        .to_latest(conn)
+        .unwrap();
+        conn.execute_batch(
+            "INSERT INTO books (title, title_norm, author, author_norm, subject, subject_norm, category_id)
+               VALUES ('T', 't', 'A', 'a', 'S', 's', 1);
+             INSERT INTO copies (book_id, registration_code) VALUES (1, 'C1'), (1, 'C2');
+             INSERT INTO teachers (name, name_norm) VALUES ('P', 'p');
+             INSERT INTO classes (name, name_norm, school_year, shift, teacher_id)
+               VALUES ('5A', '5a', 2026, 'morning', 1);
+             INSERT INTO students (name, name_norm, registration, class_id)
+               VALUES ('Ana', 'ana', 'M1', 1), ('Bia', 'bia', 'M2', 1);
+             INSERT INTO loans (copy_id, student_id, book_id, copy_code, book_title, book_author, book_norm,
+                                loaned_at, due_at, returned_at, marked_read)
+               VALUES (1, 1, 1, 'C1', 'T', 'A', 't a', '2026-10-01', '2026-10-10', '2026-10-05', 1),
+                      (2, 1, 1, 'C2', 'T', 'A', 't a', '2026-10-06', '2026-10-30', NULL, 0);
+             INSERT INTO class_readings (class_id, book_id, book_title, book_author, book_norm, read_at)
+               VALUES (1, 1, 'T', 'A', 't a', '2026-10-08');
+             INSERT INTO class_reading_students (reading_id, student_id) VALUES (1, 1), (1, 2);",
+        )
+        .unwrap();
     }
 
     /// Cria professor + turma + aluno e devolve `(teacher_id, class_id, student_id)`.
@@ -438,6 +492,79 @@ mod tests {
                 .read_count,
             1
         );
+    }
+
+    fn count(conn: &Connection, table: &str) -> i64 {
+        conn.query_row(&format!("SELECT COUNT(*) FROM {table}"), [], |r| r.get(0))
+            .unwrap()
+    }
+
+    #[test]
+    fn migration_0004_v3_para_v4_preserva_emprestimos_e_presencas() {
+        let mut conn = Connection::open_in_memory().unwrap();
+        testutil::seed_v3(&mut conn);
+        assert_eq!(count(&conn, "loans"), 2);
+        assert_eq!(count(&conn, "class_reading_students"), 2);
+
+        migrate(&mut conn).unwrap();
+
+        let v: i32 = conn
+            .query_row("PRAGMA user_version", [], |r| r.get(0))
+            .unwrap();
+        assert_eq!(v, 4);
+        assert_eq!(count(&conn, "loans"), 2, "sem cascata em loans");
+        assert_eq!(
+            count(&conn, "class_reading_students"),
+            2,
+            "sem cascata nas presenças"
+        );
+        assert_eq!(count(&conn, "students"), 2);
+        assert_eq!(count(&conn, "class_readings"), 1);
+        assert_eq!(count(&conn, "pragma_foreign_key_check"), 0);
+        let fk: i64 = conn
+            .query_row("PRAGMA foreign_keys", [], |r| r.get(0))
+            .unwrap();
+        assert_eq!(fk, 1);
+        let name: String = conn
+            .query_row(
+                "SELECT class_name FROM class_readings WHERE id = 1",
+                [],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert_eq!(name, "5A");
+
+        // índices recriados
+        for idx in [
+            "idx_students_class",
+            "idx_class_readings_unique",
+            "idx_class_readings_book",
+            "idx_crs_student",
+            "idx_loans_student",
+        ] {
+            let n: i64 = conn
+                .query_row(
+                    "SELECT COUNT(*) FROM sqlite_master WHERE type = 'index' AND name = ?1",
+                    [idx],
+                    |r| r.get(0),
+                )
+                .unwrap();
+            assert_eq!(n, 1, "{idx}");
+        }
+
+        // FKs funcionam no schema novo: excluir a turma solta alunos, mantém o resto
+        let s = crate::db::students::get(&conn, 1, testutil::today()).unwrap();
+        assert_eq!((s.active_loans, s.read_count), (1, 1));
+        crate::db::classes::delete(&conn, 1).unwrap();
+        assert_eq!(count(&conn, "students"), 2);
+        assert_eq!(count(&conn, "loans"), 2);
+        assert_eq!(count(&conn, "class_reading_students"), 2);
+        // excluir aluno ainda cascateia no próprio histórico
+        conn.execute("DELETE FROM loans WHERE returned_at IS NULL", [])
+            .unwrap();
+        crate::db::students::delete(&conn, 1).unwrap();
+        assert_eq!(count(&conn, "loans"), 0);
+        assert_eq!(count(&conn, "class_reading_students"), 1);
     }
 
     #[test]

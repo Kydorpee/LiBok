@@ -13,7 +13,7 @@ import { useCreateStudent, useDeleteStudent, useStudent, useUpdateStudent } from
 import {
   emptyStudentForm,
   formToStudentInput,
-  studentSchema,
+  makeStudentSchema,
   studentToForm,
   type StudentFormOutput,
   type StudentFormValues,
@@ -40,11 +40,12 @@ function StudentForm({ student, presetClassId }: { student?: Student; presetClas
     control,
     formState: { errors, isSubmitting, submitCount },
   } = useForm<StudentFormValues, unknown, StudentFormOutput>({
-    resolver: zodResolver(studentSchema),
+    resolver: zodResolver(makeStudentSchema(!student || !!student.classRoom)),
     defaultValues: student ? studentToForm(student) : emptyStudentForm(presetClassId),
   });
   const classId = useWatch({ control, name: "classId" });
   const teacher = classes.data?.find((c) => c.id === Number(classId))?.teacher.name;
+  const noClass = editing && !student.classRoom;
 
   async function onSubmit(values: StudentFormOutput) {
     const input = formToStudentInput(values);
@@ -115,10 +116,16 @@ function StudentForm({ student, presetClassId }: { student?: Student; presetClas
             />
             <Input label="Matrícula *" error={errors.registration?.message} {...register("registration")} />
             <Select
-              label="Turma *"
+              label={noClass ? "Turma" : "Turma *"}
               placeholder="Selecione"
               error={errors.classId?.message}
-              help={teacher ? `Professor responsável: ${teacher}` : undefined}
+              help={
+                noClass && !teacher
+                  ? "Aluno sem turma: escolha uma turma para matriculá-lo"
+                  : teacher
+                    ? `Professor responsável: ${teacher}`
+                    : undefined
+              }
               options={(classes.data ?? []).map((c) => ({ value: String(c.id), label: `${c.name} (${c.schoolYear})` }))}
               {...register("classId", { setValueAs: (v) => (v === "" || v == null ? undefined : Number(v)) })}
             />

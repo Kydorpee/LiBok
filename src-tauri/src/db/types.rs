@@ -75,12 +75,21 @@ pub struct Reader {
     pub overdue_loans: i64,
 }
 
+/// Turma de uma leitura coletiva: `id` é `None` se a turma foi excluída
+/// (o `name` guardado na leitura continua disponível).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ReadingClass {
+    pub id: Option<i64>,
+    pub name: String,
+}
+
 /// Leitura coletiva da turma (`ClassReading` do contrato).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ClassReading {
     pub id: i64,
-    pub class_room: Ref,
+    pub class_room: ReadingClass,
     pub book: super::loans::LoanBook,
     pub read_at: String,
     pub present_count: i64,

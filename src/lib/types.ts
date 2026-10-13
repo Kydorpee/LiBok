@@ -99,7 +99,7 @@ export type Student = {
   id: number;
   name: string;
   registration: string;
-  classRoom: Ref & { teacher: Ref };
+  classRoom?: Ref & { teacher: Ref };
   guardian?: string;
   contact?: string;
   notes?: string;
@@ -111,7 +111,7 @@ export type Student = {
 export type StudentInput = {
   name: string;
   registration: string;
-  classId: number;
+  classId: number | null;
   guardian?: string;
   contact?: string;
   notes?: string;
@@ -119,6 +119,7 @@ export type StudentInput = {
 export type StudentQuery = {
   text?: string;
   classId?: number;
+  noClass?: boolean;
   overdueOnly?: boolean;
   page?: number;
   pageSize?: number;
@@ -179,6 +180,16 @@ export type CsvPreviewRow = {
   codes: string[];
   status: "ready" | "duplicate" | "error";
   message?: string;
+  field?: ImportField;
+};
+export type ImportField = "title" | "author" | "subject" | "categoryName" | "codes";
+export type ImportRow = {
+  line: number;
+  title: string;
+  author: string;
+  subject: string;
+  categoryName: string;
+  codes: string[];
 };
 export type CsvPreview = {
   rows: CsvPreviewRow[];
@@ -188,7 +199,7 @@ export type CsvPreview = {
 // Leitura coletiva da turma (§5)
 export type ClassReading = {
   id: number;
-  classRoom: Ref;
+  classRoom: { id: number | null; name: string };
   book: { id: number | null; title: string; author: string };
   readAt: string;
   presentCount: number;
